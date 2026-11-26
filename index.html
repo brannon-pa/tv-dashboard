@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <div class="wall" id="wallA"></div>
+  <div class="wall" id="wallB"></div>
+  <div id="shade"></div>
+
+  <div id="clockbox">
+    <div id="time"><span id="hm">--:--</span><span id="ampm"></span></div>
+    <div id="date"></div>
+  </div>
+
+  <div id="dockwrap">
+    <div id="label"></div>
+    <div id="dock"></div>
+  </div>
+
+  <div id="credit"></div>
+  <div id="toast"></div>
+
+  <div id="diag" class="hidden">
+    <h2>Diagnostics</h2>
+    <p id="diagStatus"></p>
+    <pre id="diagList"></pre>
+    <p class="hint">Back or Red to close</p>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
