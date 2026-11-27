@@ -1,11 +1,12 @@
 # TV Dashboard
 
 A minimal, Apple TV-style home screen for Samsung Tizen TVs, loaded through
-[TizenBrew](https://github.com/reisxd/TizenBrew). It shows a large clock and date,
-rotating nature wallpapers and a dock of streaming apps you can launch with the remote.
+[TizenBrew](https://github.com/reisxd/TizenBrew). It shows a large clock and date, weather,
+your upcoming calendar events, rotating nature wallpapers and a dock of streaming apps you can
+launch with the remote.
 
 Built for a 2018 Samsung (Tizen 4.0), so it uses plain HTML, CSS and ES5 JavaScript:
-no frameworks, no build step, about 20 KB of code plus about 1.9 MB of wallpapers.
+no frameworks, no build step, about 70 KB of code plus about 1.9 MB of wallpapers.
 
 ## What gets installed
 
@@ -21,7 +22,8 @@ Nothing is changed on the TV's system. Only two things are added:
 |---|---|
 | `package.json` | Tells TizenBrew this is an app module (`appPath: index.html`) with a background service (`serviceFile: service.js`). |
 | `index.html`, `style.css`, `app.js` | The dashboard itself. |
-| `service.js` | A small launcher service that runs inside TizenBrew on `127.0.0.1:8093` (TV-only, not reachable from your network). It lists installed apps and launches them, because the dashboard page cannot launch apps itself. |
+| `ical.js` | Reads calendar (.ics) files, including repeating events. |
+| `service.js` | A small service that runs inside TizenBrew on `127.0.0.1:8093` (TV-only, not reachable from your network). It lists and launches installed apps and downloads your calendars, because the dashboard page can't do either itself. During calendar setup only, it also shows a form on port 8094 of the TV's Wi-Fi address. |
 | `wallpapers/` | Eight 1920×1080 JPEGs, each 250 KB or less except `02` (about 370 KB) and `06` (about 290 KB). |
 
 ## Remote controls
@@ -29,10 +31,10 @@ Nothing is changed on the TV's system. Only two things are added:
 | Button | Action |
 |---|---|
 | ← → | Move along the dock |
-| ↑ / ↓ | Move between the dock and the weather (top right) |
-| OK / Enter | Open the selected app |
+| ↑ / ↓ | Move between the dock, the calendar and the weather |
+| OK / Enter | Open the selected app (or set up the calendar or weather) |
 | Back | Leave the dashboard (returns to TizenBrew) |
-| Red (A) | Diagnostics: shows whether the launcher works and every app ID the TV reports |
+| Red (A) | Diagnostics: shows whether the launcher works, each calendar's status and every app ID the TV reports |
 | Green (B) | Next wallpaper |
 
 Wallpapers change every 5 minutes and follow the time of day: bright photos from 7 AM to 6 PM,
@@ -49,12 +51,41 @@ After a failure it retries every 5 minutes.
 
 **To set it up:** press **↑** to select the weather, press **OK**, and enter your ZIP code.
 Use ← → to choose a digit and ↑ ↓ to change it, then press **OK**.
-Enter `00000` to turn weather off. ZIP codes missing from the free ZIP databases (some newer ones, such as
-97703) are resolved through a nearby ZIP in the same area.
+Enter `00000` to turn weather off. ZIP codes missing from the free ZIP databases (some newer ones) are resolved through a nearby ZIP in the same area.
 
 **Privacy:** your ZIP code and its approximate coordinates are saved only on the TV, in the
 dashboard's local storage. They are never in this repo. The TV sends those coordinates to
 Open-Meteo to get the forecast.
+
+## Calendar
+
+The panel under the weather lists upcoming events from up to three calendars, for example three
+Gmail accounts: today, tomorrow, then the rest of the week, with a coloured dot per calendar.
+Calendars are downloaded every 15 minutes, so a new or changed event appears within about
+15 minutes. Repeating events, edited or cancelled repeats, and all-day events are supported.
+
+**To set it up**, you need each calendar's private link:
+
+1. In [Google Calendar](https://calendar.google.com) on a computer, open **Settings** (the gear icon).
+2. Under **Settings for my calendars** on the left, select the calendar, then **Integrate calendar**.
+3. Copy **Secret address in iCal format**. Repeat for each account.
+4. On the TV, press **↑** to select the calendar panel, then press **OK**. The TV shows an address
+   like `http://192.168.1.50:8094` and a 4-digit code.
+5. On a computer or phone on the same Wi-Fi, open that address, name each calendar, paste its
+   link, enter the code and select **Save to TV**.
+
+To change or remove calendars later, do step 4 again. Leave a link empty to keep the current one,
+or tick **Remove all calendars from the TV**. **Show times only** shows the calendar's name
+in place of each event's title, for when others can see the TV.
+
+**Privacy:**
+- Calendar links and events are saved only on the TV, in the dashboard's local storage.
+  They are never in this repo.
+- Anyone with a secret link can read that calendar. If one leaks, open the same Google setting
+  and choose **Reset**; the old link stops working.
+- The setup form is on your Wi-Fi only while the setup screen is open. It needs the code shown
+  on the TV, locks after 5 wrong codes, and closes after saving or after 10 minutes.
+- Google Workspace (work or school) accounts may have secret links turned off by their admin.
 
 ## Always-on behaviour
 
@@ -105,6 +136,10 @@ TizenBrew loads the **latest git tag** of this repo, not the latest commit.
    If you changed `service.js`, restart the TV, because the old service keeps running
    until then.
 
+To test the calendar in a desktop browser, put a test `.ics` file in a `dev/` folder (ignored by git)
+and set the `dash.cal.cfg` local-storage value to
+`{"cals":[{"name":"Test","url":"dev/test.ics"}]}`. Calendar setup itself only runs on the TV.
+
 ## How to remove it completely
 
 1. **Remove the module:** open TizenBrew → Module Manager → select `tv-dashboard` → remove it.
@@ -140,6 +175,11 @@ Samsung firmware updates can remove sideloaded apps and reset Developer Mode.
   - If it says *Launcher service: NOT reachable*, restart the TV and try again.
   - If an app shows `--`, it wasn't found by name. Find its ID in the list and add it to
     `APPS` in `app.js`.
+- **Calendar shows nothing or "Last updated…":** press **Red** and look under *Calendars*.
+  `ERROR HTTP 404` usually means the secret link was reset; set it up again with the new link.
+  Any other error, such as a certificate error, means the TV couldn't reach Google.
+- **The setup address doesn't open:** make sure the computer or phone is on the same Wi-Fi as
+  the TV, and type the address exactly, including `:8094`.
 - **Back doesn't leave the dashboard:** press the Home button. Samsung may not let a
   TizenBrew page close itself.
 

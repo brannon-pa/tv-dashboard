@@ -80,6 +80,23 @@
     xhr.send();
   }
 
+  // Plain-text request (used for calendar files). body: null for GET.
+  function getText(method, url, body, timeoutMs, cb) {
+    var xhr = new XMLHttpRequest();
+    var done = false;
+    function finish(err, data) { if (!done) { done = true; cb(err, data); } }
+    xhr.open(method, url, true);
+    xhr.timeout = timeoutMs;
+    xhr.onload = function () {
+      if (xhr.status !== 200) return finish(new Error((xhr.responseText || ('HTTP ' + xhr.status)).slice(0, 120)));
+      finish(null, xhr.responseText);
+    };
+    xhr.onerror = function () { finish(new Error('unreachable')); };
+    xhr.ontimeout = function () { finish(new Error('timeout')); };
+    if (body !== null) xhr.setRequestHeader('Content-Type', 'text/plain');
+    xhr.send(body);
+  }
+
   var toastTimer = null;
   function toast(msg) {
     var t = $('toast');
@@ -112,6 +129,9 @@
     // Night dimming.
     var night = NIGHT_START > NIGHT_END ? (h >= NIGHT_START || h < NIGHT_END) : (h >= NIGHT_START && h < NIGHT_END);
     document.body.classList.toggle('night', night);
+
+    // Drop finished events and roll "Tomorrow" into "Today".
+    renderCal();
 
     // Switch to a fitting wallpaper when day turns to evening (or back).
     if (wallIdx >= 0 && !wallFits(wallIdx)) nextWall();
@@ -294,6 +314,9 @@
       for (var i = 0; i < APPS.length; i++) {
         lines.push((APPS[i].found ? 'OK   ' : '--   ') + APPS[i].name + (APPS[i].found ? '  ->  ' + APPS[i].found.id : '  (not matched)'));
       }
+      lines.push('', 'Calendars:');
+      if (!calCfg || !calCfg.cals.length) lines.push('  none set up');
+      else for (var c = 0; c < calCfg.cals.length; c++) lines.push('  ' + calCfg.cals[c].name + ': ' + (calStatus[c] || 'not fetched yet'));
       lines.push('', 'All installed apps:');
       for (var j = 0; j < list.length; j++) lines.push(list[j].id + '   ' + list[j].name);
       $('diagList').textContent = lines.join('\n');
@@ -327,15 +350,23 @@
     // In ambient mode, the first press only brings the dock back.
     if (ambient) { setAmbient(false); e.preventDefault(); return; }
     if (pickerOpen) { pickerKey(k); e.preventDefault(); return; }
-    if (k === KEY.UP && !diagOpen) setArea('weather');
-    else if (k === KEY.DOWN && !diagOpen) setArea('dock');
+    if (csOpen) {
+      if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) closeCalSetup(true);
+      e.preventDefault();
+      return;
+    }
+    // Areas from top to bottom: weather, calendar, dock.
+    if (k === KEY.UP && !diagOpen) setArea(area === 'dock' ? 'cal' : 'weather');
+    else if (k === KEY.DOWN && !diagOpen) setArea(area === 'weather' ? 'cal' : 'dock');
     else if (k === KEY.LEFT) { if (area === 'dock') setFocus(focus - 1); }
     else if (k === KEY.RIGHT) { if (area === 'dock') setFocus(focus + 1); }
     else if (k === KEY.ENTER) {
       if (diagOpen) return;
-      if (area === 'weather') openPicker(); else launch(APPS[focus]);
+      if (area === 'weather') openPicker();
+      else if (area === 'cal') openCalSetup();
+      else launch(APPS[focus]);
     }
-    else if ((k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) && area === 'weather') setArea('dock');
+    else if ((k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) && area !== 'dock') setArea('dock');
     else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) goBack();
     else if (k === KEY.RED || k === 68 /* D */) toggleDiag();
     else if (k === KEY.GREEN || k === 87 /* W */) nextWall();
@@ -358,7 +389,7 @@
     96: 'Thunderstorms', 99: 'Thunderstorms'
   };
 
-  var area = 'dock';     // 'dock' or 'weather'
+  var area = 'dock';     // 'dock', 'cal' or 'weather'
   var wxLoc = null;      // { zip, name, lat, lon }
   var wxTimer = null;
 
@@ -369,10 +400,13 @@
   function setArea(a) {
     area = a;
     $('weather').classList.toggle('focus', a === 'weather');
+    $('cal').classList.toggle('focus', a === 'cal');
     tiles[focus].classList.toggle('focus', a === 'dock');
     $('label').textContent = a === 'weather'
       ? (wxLoc ? 'Weather for ' + wxLoc.name + '. Press OK to change' : 'Press OK to set your ZIP code')
-      : APPS[focus].name;
+      : a === 'cal'
+        ? (calCfg ? 'Calendars. Press OK to change them' : 'Press OK to add calendars')
+        : APPS[focus].name;
   }
 
   function renderWeather(w) {
@@ -380,7 +414,7 @@
     if (!wxLoc) {
       $('wxTemp').textContent = '';
       $('wxDesc').textContent = 'Weather';
-      $('wxRange').textContent = 'Press ↑ then OK to set up';
+      $('wxRange').textContent = 'Select with ↑ and press OK';
       $('weather').className = area === 'weather' ? 'setup focus' : 'setup';
       return;
     }
@@ -563,6 +597,218 @@
     });
   }
 
+  // ---------- Calendars (secret iCal links, kept only on this TV) ----------
+
+  var CAL_REFRESH_MS = 15 * 60 * 1000;
+  var CAL_RETRY_MS = 5 * 60 * 1000;
+  var CAL_DAYS = 7;               // look this many days ahead
+  var CAL_MAX_ROWS = 7;           // day headings + events shown
+  var CAL_COLORS = ['#5AC8FA', '#34C759', '#FF9F0A'];
+
+  var calCfg = null;              // { cals: [{ name, url }], timesOnly }
+  var calLast = null;             // { t, items: [{ s, e, a, title, c }] }
+  var calStatus = [];             // per calendar, for diagnostics
+  var calTimer = null;
+
+  function startOfDay(ms) { var d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+
+  function fmtTime(ms) {
+    var d = new Date(ms);
+    var h = d.getHours();
+    var m = d.getMinutes();
+    return (h % 12 || 12) + (m ? ':' + (m < 10 ? '0' : '') + m : '') + (h < 12 ? ' AM' : ' PM');
+  }
+
+  function dayLabel(dayMs, todayMs) {
+    var diff = Math.round((dayMs - todayMs) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    return DAYS[new Date(dayMs).getDay()];
+  }
+
+  function el(tag, cls, text) {
+    var x = document.createElement(tag);
+    if (cls) x.className = cls;
+    if (text !== undefined) x.textContent = text;
+    return x;
+  }
+
+  function renderCal() {
+    var box = $('calList');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!calCfg || !calCfg.cals.length) {
+      box.appendChild(el('div', 'day first', 'Calendar'));
+      box.appendChild(el('div', 'note', 'Select with ↑ and press OK to add calendars'));
+      return;
+    }
+    var now = Date.now();
+    var today = startOfDay(now);
+    var items = (calLast && calLast.items) || [];
+    var rows = 0;
+    var lastDay = null;
+    for (var i = 0; i < items.length && rows < CAL_MAX_ROWS; i++) {
+      var it = items[i];
+      if (it.e <= now && !(it.e === it.s && it.s > now - 60000)) continue;
+      var day = Math.max(startOfDay(it.s), today);
+      if (day !== lastDay) {
+        if (rows >= CAL_MAX_ROWS - 1) break;   // don't end on a lone heading
+        box.appendChild(el('div', 'day' + (lastDay === null ? ' first' : ''), dayLabel(day, today)));
+        lastDay = day;
+        rows++;
+      }
+      var row = el('div', 'ev');
+      var dot = el('span', 'dot');
+      dot.style.backgroundColor = CAL_COLORS[it.c % CAL_COLORS.length];
+      row.appendChild(dot);
+      var when = it.a ? 'All day' : (it.s <= now && it.e > now) ? 'Now' : (it.s < day ? 'Ongoing' : fmtTime(it.s));
+      row.appendChild(el('span', 'when', when));
+      var cal = calCfg.cals[it.c];
+      row.appendChild(document.createTextNode(calCfg.timesOnly ? (cal ? cal.name : 'Busy') : it.title));
+      box.appendChild(row);
+      rows++;
+    }
+    if (!rows) {
+      box.appendChild(el('div', 'day first', 'Calendar'));
+      box.appendChild(el('div', 'note', calLast ? 'Nothing in the next ' + CAL_DAYS + ' days' : 'Loading…'));
+    }
+    if (calLast && now - calLast.t > 60 * 60 * 1000) {
+      box.appendChild(el('div', 'note', 'Last updated ' + fmtTime(calLast.t)));
+    }
+  }
+
+  function fetchOne(link, cb) {
+    if (mode === 'tv') return getText('POST', SERVICE + '/ics', link, 30000, cb);
+    if (!/^https?:/i.test(link)) return getText('GET', link, null, 15000, cb); // desktop preview with a local test file
+    cb(new Error('calendar links only load on the TV'));
+  }
+
+  function fetchCalendars() {
+    clearTimeout(calTimer);
+    if (!calCfg || !calCfg.cals.length) { renderCal(); return; }
+    var from = startOfDay(Date.now());
+    var to = from + CAL_DAYS * 86400000;
+    var cals = calCfg.cals;
+    var results = [];
+    var pending = cals.length;
+    var anyOk = false;
+    cals.forEach(function (cal, idx) {
+      fetchOne(cal.url, function (err, text) {
+        var list = null;
+        if (!err) {
+          try { list = window.ICal.parse(text, from, to); } catch (e) { err = e; }
+        }
+        if (err) {
+          calStatus[idx] = 'ERROR ' + (err.message || err) + ' (' + fmtTime(Date.now()) + ')';
+          // Keep this calendar's previous events until it loads again.
+          list = [];
+          var old = (calLast && calLast.items) || [];
+          for (var j = 0; j < old.length; j++) if (old[j].c === idx) list.push(old[j]);
+          results[idx] = { old: list };
+        } else {
+          anyOk = true;
+          calStatus[idx] = 'OK, ' + list.length + ' events this week (' + fmtTime(Date.now()) + ')';
+          results[idx] = { items: list };
+        }
+        if (--pending) return;
+        var merged = [];
+        for (var c = 0; c < results.length; c++) {
+          var r = results[c];
+          if (r.old) { merged = merged.concat(r.old); continue; }
+          for (var k = 0; k < r.items.length; k++) {
+            var x = r.items[k];
+            merged.push({ s: x.start, e: x.end, a: x.allDay, title: x.title, c: c });
+          }
+        }
+        merged.sort(function (a, b) { return a.s - b.s || (b.a ? 1 : 0) - (a.a ? 1 : 0); });
+        if (anyOk) {
+          calLast = { t: Date.now(), items: merged };
+          store('dash.cal.last', JSON.stringify(calLast));
+        }
+        renderCal();
+        calTimer = setTimeout(fetchCalendars, anyOk ? CAL_REFRESH_MS : CAL_RETRY_MS);
+      });
+    });
+  }
+
+  // Setup screen: the service shows a form on the TV's Wi-Fi address; we poll for the result.
+  var csOpen = false;
+  var csPoll = null;
+
+  function csMsg(t) { $('csMsg').textContent = t; }
+
+  function openCalSetup() {
+    csOpen = true;
+    $('calsetup').className = '';
+    $('csAddr').textContent = '';
+    $('csCode').textContent = '';
+    if (mode !== 'tv') { csMsg('Calendar setup works on the TV only (the launcher service isn’t running here).'); return; }
+    var code = String(1000 + Math.floor(Math.random() * 9000));
+    var names = calCfg ? calCfg.cals.map(function (c) { return c.name; }) : [];
+    csMsg('Starting…');
+    getJSON('/calsetup/start?code=' + code + '&names=' + encodeURIComponent(JSON.stringify(names)), 5000, function (err, r) {
+      if (!csOpen) return;
+      if (err || !r || !r.ok) { csMsg('Couldn’t start setup. Restart the TV and try again.'); return; }
+      $('csAddr').textContent = r.ip ? 'http://' + r.ip + ':' + r.port : 'http://<TV address>:' + r.port;
+      $('csCode').textContent = code;
+      csMsg(r.ip ? 'Waiting for the form… (closes by itself after 10 minutes)'
+                 : 'Find the TV’s address in Settings → General → Network → Network Status → IP Settings.');
+      pollCalSetup();
+    });
+  }
+
+  function pollCalSetup() {
+    clearTimeout(csPoll);
+    csPoll = setTimeout(function () {
+      if (!csOpen) return;
+      getJSON('/calsetup/result', 4000, function (err, r) {
+        if (!csOpen) return;
+        if (!err && r && r.done) { applyCalSetup(r.cfg); return; }
+        if (!err && r && r.active === false) { csMsg('Setup closed. Press Back, then OK to start again.'); return; }
+        pollCalSetup();
+      });
+    }, 2000);
+  }
+
+  function closeCalSetup(cancel) {
+    csOpen = false;
+    clearTimeout(csPoll);
+    $('calsetup').className = 'hidden';
+    if (cancel && mode === 'tv') getJSON('/calsetup/stop', 3000, function () {});
+    setArea('cal');
+  }
+
+  function applyCalSetup(f) {
+    if (f.clear) {
+      calCfg = null;
+      calLast = null;
+      store('dash.cal.cfg', '');
+      store('dash.cal.last', '');
+      closeCalSetup(false);
+      renderCal();
+      toast('Calendars removed from this TV');
+      return;
+    }
+    var old = (calCfg && calCfg.cals) || [];
+    var cals = [];
+    for (var i = 0; i < 3; i++) {
+      var row = (f.cals && f.cals[i]) || {};
+      var link = String(row.url || '').replace(/^webcal:\/\//i, 'https://');
+      if (!link && old[i]) link = old[i].url;              // empty = keep the current link
+      if (!/^https:\/\//i.test(link)) continue;
+      cals.push({ name: String(row.name || '') || (old[i] && old[i].name) || ('Calendar ' + (i + 1)), url: link });
+    }
+    calCfg = cals.length ? { cals: cals, timesOnly: !!f.timesOnly } : null;
+    store('dash.cal.cfg', calCfg ? JSON.stringify(calCfg) : '');
+    calLast = null;
+    store('dash.cal.last', '');
+    calStatus = [];
+    closeCalSetup(false);
+    renderCal();
+    fetchCalendars();
+    toast(cals.length ? 'Saved ' + cals.length + ' calendar' + (cals.length > 1 ? 's' : '') : 'No valid calendar links were entered');
+  }
+
   // ---------- Start ----------
 
   function connect(tries) {
@@ -570,10 +816,12 @@
       if (!err) {
         mode = 'tv';
         applyInstalled(list);
+        fetchCalendars();
         return;
       }
       // On the TV the service may still be starting; retry a few times.
       if (tries > 0) setTimeout(function () { connect(tries - 1); }, 1500);
+      else fetchCalendars();
     });
   }
 
@@ -590,6 +838,10 @@
     wxLoc = loadJSON('dash.wx.loc');
     renderWeather(loadJSON('dash.wx.last'));
     fetchWeather();
+
+    calCfg = loadJSON('dash.cal.cfg');
+    calLast = loadJSON('dash.cal.last');
+    renderCal();
 
     var w = parseInt(store('dash.wall'), 10);
     if (WALLPAPERS.length) {

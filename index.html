@@ -24,6 +24,10 @@
     <div id="wxRange"></div>
   </div>
 
+  <div id="cal">
+    <div id="calList"></div>
+  </div>
+
   <div id="dockwrap">
     <div id="label"></div>
     <div id="dock"></div>
@@ -40,6 +44,16 @@
     <p class="hint">Weather by Open-Meteo.com. Your ZIP code is saved only on this TV.</p>
   </div>
 
+  <div id="calsetup" class="hidden">
+    <h2>Calendars</h2>
+    <p>On a computer or phone on the same Wi-Fi, open</p>
+    <div id="csAddr" class="big"></div>
+    <p>and enter this code</p>
+    <div id="csCode" class="big"></div>
+    <p id="csMsg"></p>
+    <p class="hint">Calendar links are saved only on this TV. Back to cancel.</p>
+  </div>
+
   <div id="diag" class="hidden">
     <h2>Diagnostics</h2>
     <p id="diagStatus"></p>
@@ -47,6 +61,7 @@
     <p class="hint">Back or Red to close</p>
   </div>
 </div>
+<script src="ical.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
