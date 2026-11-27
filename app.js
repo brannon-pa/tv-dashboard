@@ -315,6 +315,13 @@
         lines.push((APPS[i].found ? 'OK   ' : '--   ') + APPS[i].name + (APPS[i].found ? '  ->  ' + APPS[i].found.id : '  (not matched)'));
       }
       lines.push('', 'Calendars:');
+      var tzTest = '';
+      try {
+        tzTest = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, year: 'numeric',
+          month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date());
+      } catch (e) { tzTest = 'not supported (' + e.message + ')'; }
+      lines.push('  TV time: ' + new Date().toString());
+      lines.push('  New York time via Intl: ' + tzTest);
       if (!calCfg || !calCfg.cals.length) lines.push('  none set up');
       else for (var c = 0; c < calCfg.cals.length; c++) lines.push('  ' + calCfg.cals[c].name + ': ' + (calStatus[c] || 'not fetched yet'));
       lines.push('', 'All installed apps:');
@@ -707,7 +714,10 @@
           results[idx] = { old: list };
         } else {
           anyOk = true;
-          calStatus[idx] = 'OK, ' + list.length + ' events this week (' + fmtTime(Date.now()) + ')';
+          var head = String(text).slice(0, 24).replace(/[\r\n]+/g, ' ');
+          var total = (String(text).match(/BEGIN:VEVENT/g) || []).length;
+          calStatus[idx] = 'OK, ' + list.length + ' events this week (' + fmtTime(Date.now()) + '); file ' +
+            Math.round(String(text).length / 1024) + ' KB, ' + total + ' events in all, starts "' + head + '"';
           results[idx] = { items: list };
         }
         if (--pending) return;
