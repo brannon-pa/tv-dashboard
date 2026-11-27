@@ -34,7 +34,7 @@ Nothing is changed on the TV's system. Only two things are added:
 | ↑ / ↓ | Move between the dock, the calendar and the weather |
 | OK / Enter | Open the selected app (or set up the calendar or weather) |
 | Back | Leave the dashboard (returns to TizenBrew) |
-| Red (A) | Diagnostics: shows whether the launcher works, each calendar's status and every app ID the TV reports |
+| ↓ on the dock (or Red / A) | Diagnostics: shows whether the launcher works, each calendar's status and every app ID the TV reports. ↑ or Back closes it. |
 | Green (B) | Next wallpaper |
 
 Wallpapers change every 5 minutes and follow the time of day: bright photos from 7 AM to 6 PM,
@@ -120,7 +120,7 @@ You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
 
 - **Apps:** edit the `APPS` list at the top of `app.js`. Each entry has a display
   `name`, a `match` pattern for the app's name on the TV, and fallback `ids`.
-  If an app won't open, press **Red** on the dashboard to see the real ID and add it.
+  If an app won't open, press **↓** on the dock (diagnostics) to see the real ID and add it.
 - **Wallpapers:** add a JPEG (1920×1080, about 250 KB or less) to `wallpapers/` and to
   the `WALLPAPERS` list in `app.js`, then credit it below.
 
@@ -179,11 +179,11 @@ Samsung firmware updates can remove sideloaded apps and reset Developer Mode.
 
 - **Black or blank screen:** the module name is probably mistyped, or the repo has no
   tag yet. TizenBrew needs at least one tag, such as `v1.0.0`.
-- **Apps don't open (a message says "Couldn't open…"):** press **Red**.
+- **Apps don't open (a message says "Couldn't open…"):** press **↓** on the dock.
   - If it says *Launcher service: NOT reachable*, restart the TV and try again.
   - If an app shows `--`, it wasn't found by name. Find its ID in the list and add it to
     `APPS` in `app.js`.
-- **Calendar shows nothing or "Last updated…":** press **Red** and look under *Calendars*.
+- **Calendar shows nothing or "Last updated…":** press **↓** on the dock and look under *Calendars* on the diagnostics screen.
   `ERROR HTTP 404` usually means the secret link was reset; set it up again with the new link.
   Any other error, such as a certificate error, means the TV couldn't reach Google.
 - **The setup address doesn't open:** make sure the computer or phone is on the same Wi-Fi as

@@ -1,6 +1,6 @@
 {
   "name": "tv-dashboard",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "A minimal Apple TV-style dashboard for Samsung Tizen TVs, loaded through TizenBrew.",
   "packageType": "app",
   "appName": "Dashboard",

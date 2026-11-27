@@ -291,23 +291,42 @@
     if (!a.found) toast(a.name + ' may not be installed. Trying anyway');
     getJSON('/launch?ids=' + encodeURIComponent(ids.join(',')), 8000, function (err, res) {
       if (err || !res || !res.ok) {
-        toast('Couldn’t open ' + a.name + '. Open it from the home bar (Red = diagnostics)');
+        toast('Couldn’t open ' + a.name + '. Open it from the home bar (press ↓ for diagnostics)');
       }
     });
   }
 
-  // ---------- Diagnostics overlay (Red button, or D on a keyboard) ----------
+  // ---------- Diagnostics overlay (↓ on the dock, the Red button, or D on a keyboard) ----------
 
   var diagOpen = false;
+
+  function calDiagLines() {
+    var lines = ['', 'Calendars:'];
+    var tzTest = '';
+    try {
+      tzTest = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, year: 'numeric',
+        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date());
+    } catch (e) { tzTest = 'not supported (' + e.message + ')'; }
+    lines.push('  TV time: ' + new Date().toString());
+    lines.push('  New York time via Intl: ' + tzTest);
+    if (!calCfg || !calCfg.cals.length) lines.push('  none set up');
+    else for (var c = 0; c < calCfg.cals.length; c++) lines.push('  ' + calCfg.cals[c].name + ': ' + (calStatus[c] || 'not fetched yet'));
+    lines.push('  Saved events: ' + ((calLast && calLast.items) ? calLast.items.length + ', last updated ' + fmtTime(calLast.t) : 'none'));
+    return lines;
+  }
+
   function toggleDiag() {
     diagOpen = !diagOpen;
     $('diag').className = diagOpen ? '' : 'hidden';
     if (!diagOpen) return;
     $('diagStatus').textContent = 'Checking launcher service at ' + SERVICE + ' ...';
-    $('diagList').textContent = '';
+    $('diagList').textContent = calDiagLines().join('\n');
     getJSON('/apps', 5000, function (err, list) {
+      if (!diagOpen) return;
       if (err) {
-        $('diagStatus').textContent = 'Launcher service: NOT reachable (' + err.message + '). Mode: ' + mode;
+        $('diagStatus').textContent = 'Launcher service: NOT reachable (' + err.message + '). Mode: ' + mode +
+          '. Restart the TV by holding the power button until the Samsung logo appears.';
+        $('diagList').textContent = calDiagLines().join('\n');
         return;
       }
       $('diagStatus').textContent = 'Launcher service: OK. ' + list.length + ' apps installed. Mode: ' + mode;
@@ -315,16 +334,7 @@
       for (var i = 0; i < APPS.length; i++) {
         lines.push((APPS[i].found ? 'OK   ' : '--   ') + APPS[i].name + (APPS[i].found ? '  ->  ' + APPS[i].found.id : '  (not matched)'));
       }
-      lines.push('', 'Calendars:');
-      var tzTest = '';
-      try {
-        tzTest = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, year: 'numeric',
-          month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date());
-      } catch (e) { tzTest = 'not supported (' + e.message + ')'; }
-      lines.push('  TV time: ' + new Date().toString());
-      lines.push('  New York time via Intl: ' + tzTest);
-      if (!calCfg || !calCfg.cals.length) lines.push('  none set up');
-      else for (var c = 0; c < calCfg.cals.length; c++) lines.push('  ' + calCfg.cals[c].name + ': ' + (calStatus[c] || 'not fetched yet'));
+      lines = lines.concat(calDiagLines());
       lines.push('', 'All installed apps:');
       for (var j = 0; j < list.length; j++) lines.push(list[j].id + '   ' + list[j].name);
       $('diagList').textContent = lines.join('\n');
@@ -363,6 +373,15 @@
       e.preventDefault();
       return;
     }
+    // Diagnostics: ↑, Back, OK or Red closes it.
+    if (diagOpen) {
+      if (k === KEY.UP || k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE || k === KEY.ENTER ||
+          k === KEY.RED || k === 68) toggleDiag();
+      e.preventDefault();
+      return;
+    }
+    // ↓ on the dock opens diagnostics (for remotes without colour buttons).
+    if (k === KEY.DOWN && area === 'dock') { toggleDiag(); e.preventDefault(); return; }
     // Areas from top to bottom: weather, calendar, dock.
     if (k === KEY.UP && !diagOpen) setArea(area === 'dock' ? 'cal' : 'weather');
     else if (k === KEY.DOWN && !diagOpen) setArea(area === 'weather' ? 'cal' : 'dock');
