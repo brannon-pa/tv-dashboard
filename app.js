@@ -324,6 +324,7 @@
   // ---------- Weather (Open-Meteo: free, no account; location kept only on this TV) ----------
 
   var WX_REFRESH_MS = 30 * 60 * 1000;
+  var WX_RETRY_MS = 5 * 60 * 1000;   // after a failed fetch
   var WX_MAX_AGE_MS = 3 * 60 * 60 * 1000; // hide readings older than 3 hours
   var WX_TEXT = {
     0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog',
@@ -380,7 +381,13 @@
       '&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min' +
       '&temperature_unit=fahrenheit&timezone=auto&forecast_days=1';
     getURL(url, 15000, function (err, d) {
-      if (err || !d || !d.current || !d.daily) { renderWeather(loadJSON('dash.wx.last')); return; }
+      if (err || !d || !d.current || !d.daily) {
+        // Keep showing the last good reading, and retry sooner than usual.
+        renderWeather(loadJSON('dash.wx.last'));
+        clearTimeout(wxTimer);
+        wxTimer = setTimeout(fetchWeather, WX_RETRY_MS);
+        return;
+      }
       var w = { t: Date.now(), temp: d.current.temperature_2m, code: d.current.weather_code,
                 hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0] };
       store('dash.wx.last', JSON.stringify(w));
@@ -428,6 +435,52 @@
     drawPicker();
   }
 
+  // ZIP -> { name, lat, lon }. Free ZIP databases miss some newer ZIPs, so:
+  // 1) Open-Meteo, 2) Zippopotam, 3) nearby ZIPs with the same first 3 digits (same area).
+  function zipFromOpenMeteo(zip, cb) {
+    getURL('https://geocoding-api.open-meteo.com/v1/search?count=1&countryCode=US&format=json&name=' + zip, 10000,
+      function (err, d) {
+        var r = !err && d && d.results && d.results[0];
+        cb(r ? { name: r.name + (r.admin1 ? ', ' + r.admin1 : ''), lat: r.latitude, lon: r.longitude } : null);
+      });
+  }
+
+  function zipFromZippopotam(zip, cb) {
+    getURL('https://api.zippopotam.us/us/' + zip, 10000, function (err, d) {
+      var p = !err && d && d.places && d.places[0];
+      cb(p ? { name: p['place name'] + ', ' + p.state, lat: parseFloat(p.latitude), lon: parseFloat(p.longitude) } : null);
+    });
+  }
+
+  function pad5(n) { var s = String(n); while (s.length < 5) s = '0' + s; return s; }
+
+  function lookupZip(zip, cb) {
+    zipFromOpenMeteo(zip, function (r) {
+      if (r) return cb(r);
+      zipFromZippopotam(zip, function (r2) {
+        if (r2) return cb(r2);
+        // Try neighbours: +1, -1, +2, -2 ... within the same 3-digit area.
+        var base = parseInt(zip, 10);
+        var prefix = zip.substr(0, 3);
+        var near = [];
+        for (var d = 1; d <= 10; d++) {
+          [base + d, base - d].forEach(function (n) {
+            var z = pad5(n);
+            if (n > 0 && z.substr(0, 3) === prefix) near.push(z);
+          });
+        }
+        (function next(i) {
+          if (i >= near.length) return cb(null);
+          drawPicker('Looking up ' + zip + ' (checking nearby ZIP ' + near[i] + ') ...');
+          zipFromZippopotam(near[i], function (r3) {
+            if (r3) return cb(r3);
+            next(i + 1);
+          });
+        })(0);
+      });
+    });
+  }
+
   function saveZip(zip) {
     if (zip === '00000') {
       wxLoc = null;
@@ -439,12 +492,10 @@
       return;
     }
     drawPicker('Looking up ' + zip + ' ...');
-    var url = 'https://geocoding-api.open-meteo.com/v1/search?count=1&countryCode=US&format=json&name=' + zip;
-    getURL(url, 15000, function (err, d) {
-      var r = !err && d && d.results && d.results[0];
+    lookupZip(zip, function (r) {
       if (!r) { drawPicker('Couldn’t find ZIP ' + zip + '. Check it and press OK again.'); return; }
-      wxLoc = { zip: zip, name: r.name + (r.admin1 ? ', ' + r.admin1 : ''),
-                lat: Math.round(r.latitude * 100) / 100, lon: Math.round(r.longitude * 100) / 100 };
+      wxLoc = { zip: zip, name: r.name,
+                lat: Math.round(r.lat * 100) / 100, lon: Math.round(r.lon * 100) / 100 };
       store('dash.wx.loc', JSON.stringify(wxLoc));
       store('dash.wx.last', '');
       closePicker();
