@@ -343,3 +343,91 @@ body.night #dim { opacity: 0.6; }
 #calsetup .big { font-size: 56px; font-weight: 400; letter-spacing: 1px; margin: 8px 0 18px; }
 #calsetup #csCode { letter-spacing: 18px; }
 #calsetup .hint { font-size: 20px; opacity: 0.5; margin-top: 26px; }
+
+/* ---------- Weather effects (transform-only animations on tiled SVG layers) ---------- */
+
+#wxfx {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
+}
+#wxfx.on { display: block; }
+#wxfx .tilt {
+  position: absolute;
+  left: -300px;
+  top: -300px;
+  width: 2520px;
+  height: 1680px;
+  -webkit-transform: rotate(10deg);
+  transform: rotate(10deg);
+}
+#wxfx .sway {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+}
+#wxfx .layer {
+  position: absolute;
+  left: 0;
+  top: -300px;
+  width: 100%;
+  height: 1980px;
+  background-repeat: repeat;
+  will-change: transform;
+  display: none;
+}
+@keyframes wxfall { from { transform: translateY(0); } to { transform: translateY(300px); } }
+@keyframes wxfall2 { from { transform: translateY(0); } to { transform: translateY(600px); } }
+@keyframes wxsway { from { transform: translateX(-24px); } to { transform: translateX(24px); } }
+@keyframes wxflash { 0%, 90%, 93%, 96%, 100% { opacity: 0; } 91.5% { opacity: 0.35; } 94.5% { opacity: 0.22; } }
+@keyframes wxfog { from { transform: translateX(0); } to { transform: translateX(-1920px); } }
+
+/* Rain */
+#wxfx.rain #fxNear, #wxfx.rain #fxFar,
+#wxfx.heavy #fxNear, #wxfx.heavy #fxFar,
+#wxfx.thunder #fxNear, #wxfx.thunder #fxFar,
+#wxfx.drizzle #fxFar { display: block; }
+#wxfx.rain #fxNear, #wxfx.heavy #fxNear, #wxfx.thunder #fxNear { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22300%22%20height%3D%22300%22%3E%3Cline%20x1%3D%2298.6%22%20y1%3D%22166.3%22%20x2%3D%2298.6%22%20y2%3D%22210.8%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.37%22%20stroke-width%3D%222.0%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22110.8%22%20y1%3D%22131.1%22%20x2%3D%22110.8%22%20y2%3D%22172.8%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.36%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2224.4%22%20y1%3D%22109.2%22%20x2%3D%2224.4%22%20y2%3D%22151.9%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.56%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2269.2%22%20y1%3D%22228.6%22%20x2%3D%2269.2%22%20y2%3D%22287.4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.49%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22289.1%22%20y1%3D%22222.0%22%20x2%3D%22289.1%22%20y2%3D%22263.4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.42%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2238.4%22%20y1%3D%22204.6%22%20x2%3D%2238.4%22%20y2%3D%22253.9%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.40%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22190.6%22%20y1%3D%22136.3%22%20x2%3D%22190.6%22%20y2%3D%22187.5%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.37%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2264.1%22%20y1%3D%22102.4%22%20x2%3D%2264.1%22%20y2%3D%22162.9%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.43%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22136.3%22%20y1%3D%22199.4%22%20x2%3D%22136.3%22%20y2%3D%22248.4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.52%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
+#wxfx.rain #fxFar, #wxfx.heavy #fxFar, #wxfx.thunder #fxFar, #wxfx.drizzle #fxFar { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22300%22%20height%3D%22300%22%3E%3Cline%20x1%3D%22171.7%22%20y1%3D%22235.0%22%20x2%3D%22171.7%22%20y2%3D%22266.5%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.30%22%20stroke-width%3D%221.1%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22290.2%22%20y1%3D%22115.3%22%20x2%3D%22290.2%22%20y2%3D%22139.5%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.31%22%20stroke-width%3D%221.1%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22146.8%22%20y1%3D%22185.3%22%20x2%3D%22146.8%22%20y2%3D%22208.0%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.31%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22259.6%22%20y1%3D%22189.4%22%20x2%3D%22259.6%22%20y2%3D%22217.0%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.28%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22137.2%22%20y1%3D%22248.3%22%20x2%3D%22137.2%22%20y2%3D%22285.5%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.26%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2221.7%22%20y1%3D%22171.7%22%20x2%3D%2221.7%22%20y2%3D%22206.4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.35%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2287.1%22%20y1%3D%22181.2%22%20x2%3D%2287.1%22%20y2%3D%22210.2%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.18%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2253.1%22%20y1%3D%2216.3%22%20x2%3D%2253.1%22%20y2%3D%2240.4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.31%22%20stroke-width%3D%221.1%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2276.3%22%20y1%3D%22236.1%22%20x2%3D%2276.3%22%20y2%3D%22265.2%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.19%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22164.4%22%20y1%3D%22214.7%22%20x2%3D%22164.4%22%20y2%3D%22252.6%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.33%22%20stroke-width%3D%221.1%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22125.3%22%20y1%3D%22240.1%22%20x2%3D%22125.3%22%20y2%3D%22268.6%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.34%22%20stroke-width%3D%221.1%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2255.5%22%20y1%3D%2263.9%22%20x2%3D%2255.5%22%20y2%3D%2290.1%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.26%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2280.7%22%20y1%3D%22116.4%22%20x2%3D%2280.7%22%20y2%3D%22138.5%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.24%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22282.3%22%20y1%3D%22136.9%22%20x2%3D%22282.3%22%20y2%3D%22171.3%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.28%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%2219.8%22%20y1%3D%22204.2%22%20x2%3D%2219.8%22%20y2%3D%22242.4%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.33%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%2F%3E%3Cline%20x1%3D%22118.6%22%20y1%3D%2228.0%22%20x2%3D%22118.6%22%20y2%3D%2257.2%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%220.29%22%20stroke-width%3D%221.0%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
+#wxfx.rain #fxNear { animation: wxfall 0.42s linear infinite; opacity: 0.8; }
+#wxfx.rain #fxFar { animation: wxfall 0.6s linear infinite; opacity: 0.8; }
+#wxfx.heavy #fxNear, #wxfx.thunder #fxNear { animation: wxfall 0.3s linear infinite; }
+#wxfx.heavy #fxFar, #wxfx.thunder #fxFar { animation: wxfall 0.42s linear infinite; }
+#wxfx.drizzle #fxFar { animation: wxfall 0.75s linear infinite; opacity: 0.55; }
+
+/* Snow: falls slowly and sways side to side */
+#wxfx.snow .tilt { transform: none; }
+#wxfx.snow .sway { animation: wxsway 4s ease-in-out infinite alternate; }
+#wxfx.snow #fxNear, #wxfx.snow #fxFar { display: block; }
+#wxfx.snow #fxNear { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22300%22%20height%3D%22300%22%3E%3Ccircle%20cx%3D%2265.0%22%20cy%3D%2251.5%22%20r%3D%223.1%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.82%22%2F%3E%3Ccircle%20cx%3D%224.2%22%20cy%3D%2248.2%22%20r%3D%223.1%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.77%22%2F%3E%3Ccircle%20cx%3D%2212.1%22%20cy%3D%22258.8%22%20r%3D%223.7%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.87%22%2F%3E%3Ccircle%20cx%3D%2277.8%22%20cy%3D%22105.5%22%20r%3D%223.3%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.82%22%2F%3E%3Ccircle%20cx%3D%22251.7%22%20cy%3D%22293.7%22%20r%3D%223.2%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.84%22%2F%3E%3Ccircle%20cx%3D%2229.9%22%20cy%3D%2234.6%22%20r%3D%224.0%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.82%22%2F%3E%3Ccircle%20cx%3D%22245.7%22%20cy%3D%2251.5%22%20r%3D%223.5%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.75%22%2F%3E%3Ccircle%20cx%3D%22158.1%22%20cy%3D%2248.2%22%20r%3D%224.9%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.86%22%2F%3E%3Ccircle%20cx%3D%22158.2%22%20cy%3D%22289.7%22%20r%3D%223.1%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.92%22%2F%3E%3Ccircle%20cx%3D%2280.9%22%20cy%3D%22111.4%22%20r%3D%224.4%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.78%22%2F%3E%3C%2Fsvg%3E"); top: -600px; height: 2280px; animation: wxfall2 9s linear infinite; }
+#wxfx.snow #fxFar { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22300%22%20height%3D%22300%22%3E%3Ccircle%20cx%3D%22159.6%22%20cy%3D%22232.0%22%20r%3D%222.1%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.55%22%2F%3E%3Ccircle%20cx%3D%22241.9%22%20cy%3D%22293.1%22%20r%3D%221.5%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.71%22%2F%3E%3Ccircle%20cx%3D%22243.5%22%20cy%3D%22220.4%22%20r%3D%222.2%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.52%22%2F%3E%3Ccircle%20cx%3D%22107.5%22%20cy%3D%2211.4%22%20r%3D%221.8%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.46%22%2F%3E%3Ccircle%20cx%3D%2279.0%22%20cy%3D%22206.8%22%20r%3D%221.5%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.74%22%2F%3E%3Ccircle%20cx%3D%22278.7%22%20cy%3D%22293.7%22%20r%3D%221.7%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.74%22%2F%3E%3Ccircle%20cx%3D%2267.6%22%20cy%3D%2269.5%22%20r%3D%221.6%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.51%22%2F%3E%3Ccircle%20cx%3D%22186.6%22%20cy%3D%22268.1%22%20r%3D%221.4%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.70%22%2F%3E%3Ccircle%20cx%3D%22195.0%22%20cy%3D%22238.2%22%20r%3D%221.8%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.48%22%2F%3E%3Ccircle%20cx%3D%22270.5%22%20cy%3D%22233.0%22%20r%3D%222.0%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.68%22%2F%3E%3Ccircle%20cx%3D%2255.3%22%20cy%3D%22235.1%22%20r%3D%221.8%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.55%22%2F%3E%3Ccircle%20cx%3D%22288.5%22%20cy%3D%22119.4%22%20r%3D%222.2%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.57%22%2F%3E%3Ccircle%20cx%3D%22215.9%22%20cy%3D%2253.2%22%20r%3D%222.3%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.49%22%2F%3E%3Ccircle%20cx%3D%22269.5%22%20cy%3D%22240.5%22%20r%3D%221.4%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.49%22%2F%3E%3Ccircle%20cx%3D%22291.0%22%20cy%3D%22196.2%22%20r%3D%222.2%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.56%22%2F%3E%3Ccircle%20cx%3D%2241.4%22%20cy%3D%227.0%22%20r%3D%221.9%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.74%22%2F%3E%3Ccircle%20cx%3D%22157.8%22%20cy%3D%22277.5%22%20r%3D%222.0%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.58%22%2F%3E%3Ccircle%20cx%3D%22245.7%22%20cy%3D%2265.2%22%20r%3D%222.2%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.53%22%2F%3E%3Ccircle%20cx%3D%2273.5%22%20cy%3D%22175.5%22%20r%3D%221.6%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.53%22%2F%3E%3Ccircle%20cx%3D%2241.3%22%20cy%3D%22270.8%22%20r%3D%221.7%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.56%22%2F%3E%3Ccircle%20cx%3D%22174.5%22%20cy%3D%22269.1%22%20r%3D%221.7%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.58%22%2F%3E%3Ccircle%20cx%3D%22150.5%22%20cy%3D%22159.3%22%20r%3D%222.3%22%20fill%3D%22%23fff%22%20fill-opacity%3D%220.61%22%2F%3E%3C%2Fsvg%3E"); animation: wxfall 7s linear infinite; }
+
+/* Thunder: rain plus an occasional flash */
+#fxFlash {
+  position: absolute;
+  left: 0; top: 0;
+  width: 1920px; height: 1080px;
+  background: #dfe8ff;
+  opacity: 0;
+  display: none;
+}
+#wxfx.thunder #fxFlash { display: block; animation: wxflash 11s linear infinite; }
+
+/* Fog: soft bands of haze drifting slowly */
+#fxFog {
+  position: absolute;
+  left: 0; top: 0;
+  width: 3840px; height: 1080px;
+  display: none;
+  will-change: transform;
+  background:
+    radial-gradient(ellipse 700px 260px at 480px 640px, rgba(220,225,230,0.30), rgba(220,225,230,0) 70%),
+    radial-gradient(ellipse 800px 240px at 1300px 380px, rgba(220,225,230,0.22), rgba(220,225,230,0) 70%),
+    radial-gradient(ellipse 700px 260px at 2400px 640px, rgba(220,225,230,0.30), rgba(220,225,230,0) 70%),
+    radial-gradient(ellipse 800px 240px at 3220px 380px, rgba(220,225,230,0.22), rgba(220,225,230,0) 70%);
+}
+#wxfx.fog #fxFog { display: block; animation: wxfog 90s linear infinite; }

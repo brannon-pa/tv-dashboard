@@ -49,6 +49,13 @@ If Open-Meteo is unreachable, the dashboard falls back to the US
 [National Weather Service](https://www.weather.gov/documentation/services-web-api) (also free).
 After a failure it retries every 5 minutes.
 
+**Weather effects:** when it's raining, snowing, stormy or foggy where you are, a light animation
+plays over the wallpaper: drizzle, rain, heavy rain, rain with lightning flashes, falling snow or
+drifting fog. Clear and cloudy weather show none. The effects only slide pre-drawn layers, which the
+TV's graphics chip handles, so they stay smooth on older TVs. To turn them off, set
+`WX_EFFECTS = false` in `app.js`. To preview one in a browser, open `index.html?fx=snow` (or
+`drizzle`, `rain`, `heavy`, `thunder`, `fog`, `none`).
+
 **To set it up:** press **↑** to select the weather, press **OK**, and enter your ZIP code.
 Use ← → to choose a digit and ↑ ↓ to change it, then press **OK**.
 Enter `00000` to turn weather off. ZIP codes missing from the free ZIP databases (some newer ones) are resolved through a nearby ZIP in the same area.
@@ -96,7 +103,7 @@ in place of each event's title, for when others can see the TV.
 - **Daily refresh:** the page reloads itself at 4 AM, so it stays fresh when left on for days.
 
 You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
-`NIGHT_START`, `NIGHT_END`, `RELOAD_HOUR`, `USE_TV_ICONS`).
+`NIGHT_START`, `NIGHT_END`, `RELOAD_HOUR`, `USE_TV_ICONS`, `WX_EFFECTS`).
 
 ### Opening the dashboard automatically
 
@@ -121,7 +128,8 @@ You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
 
 TizenBrew loads the **latest git tag** of this repo, not the latest commit.
 
-1. Commit your change and bump `version` in `package.json`.
+1. Commit your change and bump `version` in `package.json`. Also update the `?v=` numbers on the
+   file links in `index.html`, so the TV doesn't keep an old copy of a file.
    To test the weather backup in a browser, open `index.html?wx=nws`.
 2. Tag and push it:
    ```bash

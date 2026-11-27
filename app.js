@@ -45,7 +45,8 @@
   var IDLE_MS = 3 * 60 * 1000; // no button presses for this long -> ambient mode (dock hides)
   var NIGHT_START = 23;        // dim the screen from 11 PM ...
   var NIGHT_END = 6;           // ... until 6 AM
-  var RELOAD_HOUR = 4;         // reload once a day at 4 AM so a page left on for days stays fresh
+  var RELOAD_HOUR = 4;
+  var WX_EFFECTS = true;       // light rain / snow / fog animation that matches the current weather         // reload once a day at 4 AM so a page left on for days stays fresh
 
   var KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, ENTER: 13, BACK: 10009, ESC: 27, BACKSPACE: 8, RED: 403, GREEN: 404 };
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -387,6 +388,36 @@
   var WX_RETRY_MS = 5 * 60 * 1000;   // after a failed fetch
   var FORCE_NWS = /[?&]wx=nws/.test(window.location.search); // testing: index.html?wx=nws
   var WX_MAX_AGE_MS = 3 * 60 * 60 * 1000; // hide readings older than 3 hours
+  var FORCE_FX = (/[?&]fx=(\w+)/.exec(window.location.search) || [])[1] || ''; // testing: index.html?fx=snow
+
+  // Current conditions -> effect: '', 'drizzle', 'rain', 'heavy', 'thunder', 'snow' or 'fog'.
+  function wxKind(w) {
+    if (w.code !== undefined && w.code !== null) {
+      var c = w.code;
+      if (c >= 95) return 'thunder';
+      if (c === 71 || c === 73 || c === 75 || c === 77 || c === 85 || c === 86) return 'snow';
+      if (c === 65 || c === 82) return 'heavy';
+      if (c === 61 || c === 63 || c === 66 || c === 67 || c === 80 || c === 81) return 'rain';
+      if (c >= 51 && c <= 57) return 'drizzle';
+      if (c === 45 || c === 48) return 'fog';
+      return '';
+    }
+    var t = String(w.text || '').toLowerCase();
+    if (/thunder|t-storm/.test(t)) return 'thunder';
+    if (/snow|flurr|sleet|blizzard|wintry/.test(t)) return 'snow';
+    if (/heavy rain|heavy shower/.test(t)) return 'heavy';
+    if (/drizzle|sprinkle/.test(t)) return 'drizzle';
+    if (/rain|shower/.test(t)) return 'rain';
+    if (/fog|mist|haze/.test(t)) return 'fog';
+    return '';
+  }
+
+  function setEffect(kind) {
+    if (FORCE_FX) kind = FORCE_FX === 'none' ? '' : FORCE_FX;
+    if (!WX_EFFECTS) kind = '';
+    var cls = kind ? 'on ' + kind : '';
+    if ($('wxfx').className !== cls) $('wxfx').className = cls;
+  }
   var WX_TEXT = {
     0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog',
     51: 'Drizzle', 53: 'Drizzle', 55: 'Drizzle', 56: 'Freezing drizzle', 57: 'Freezing drizzle',
@@ -418,6 +449,7 @@
 
   function renderWeather(w) {
     var fresh = w && (Date.now() - w.t) < WX_MAX_AGE_MS;
+    setEffect(wxLoc && fresh ? wxKind(w) : '');
     if (!wxLoc) {
       $('wxTemp').textContent = '';
       $('wxDesc').textContent = 'Weather';
