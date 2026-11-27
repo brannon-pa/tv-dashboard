@@ -221,18 +221,45 @@
 
   // ---------- Joke of the day ----------
 
-  var jokeDay = -1;
+  // State per day: { day, offset (Next presses), hidden (Dismiss) }. Resets each new day.
+  var jokeState = null;
+  var jokeSel = 0;        // 0 = Next, 1 = Dismiss (buttons show while the card is selected)
+
+  function jokeVisible() { return !!($('joke') && $('joke').className.indexOf('hidden') < 0); }
+
   function renderJoke(d) {
     var box = $('joke');
     if (!box) return;
     if (!SHOW_JOKE || !JOKES.length) { box.className = 'hidden'; return; }
+    d = d || new Date();
     var day = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
-    if (day === jokeDay) return;
-    jokeDay = day;
-    var j = JOKES[day % JOKES.length];
+    if (!jokeState) jokeState = loadJSON('dash.joke');
+    if (!jokeState || jokeState.day !== day) {
+      jokeState = { day: day, offset: 0, hidden: false };
+      store('dash.joke', JSON.stringify(jokeState));
+    }
+    if (jokeState.hidden) {
+      box.className = 'hidden';
+      if (area === 'joke') setArea('cal');
+      return;
+    }
+    var j = JOKES[(day + jokeState.offset) % JOKES.length];
     $('jokeQ').textContent = j[0];
     $('jokeA').textContent = j[1];
-    box.className = '';
+    box.className = area === 'joke' ? 'focus' : '';
+    $('jbNext').className = 'jbtn' + (jokeSel === 0 ? ' on' : '');
+    $('jbHide').className = 'jbtn' + (jokeSel === 1 ? ' on' : '');
+  }
+
+  function jokeAction() {
+    if (jokeSel === 0) {
+      jokeState.offset = (jokeState.offset + 1) % JOKES.length;
+    } else {
+      jokeState.hidden = true;
+      toast('Joke hidden until tomorrow');
+    }
+    store('dash.joke', JSON.stringify(jokeState));
+    renderJoke();
   }
 
   // ---------- Ambient mode (dock hides after IDLE_MS; any button wakes it) ----------
@@ -394,6 +421,9 @@
       tzTest = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, year: 'numeric',
         month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date());
     } catch (e) { tzTest = 'not supported (' + e.message + ')'; }
+    var w = loadJSON('dash.wx.last');
+    lines.unshift('', 'Weather now: ' + (w ? (w.text || WX_TEXT[w.code] || '?') + (w.code !== undefined && w.code !== null ? ' (code ' + w.code + ')' : '') : 'none') +
+      '. Effect: ' + (fxNow || 'none') + '. Press OK to test all effects.');
     lines.push('  TV time: ' + new Date().toString());
     lines.push('  New York time via Intl: ' + tzTest);
     if (!calCfg || !calCfg.cals.length) lines.push('  none set up');
@@ -469,6 +499,23 @@
     }
   }
 
+  // ---------- "Exit the dashboard?" ----------
+
+  var exitOpen = false;
+  var exitSel = 0;   // 0 = Stay, 1 = Exit
+
+  function drawExit() {
+    $('exStay').className = 'jbtn' + (exitSel === 0 ? ' on' : '');
+    $('exGo').className = 'jbtn' + (exitSel === 1 ? ' on' : '');
+  }
+  function openExitAsk() { exitOpen = true; exitSel = 0; $('exitask').className = ''; drawExit(); }
+  function closeExitAsk() { exitOpen = false; $('exitask').className = 'hidden'; }
+  function exitKey(k) {
+    if (k === KEY.LEFT || k === KEY.RIGHT) { exitSel = 1 - exitSel; drawExit(); }
+    else if (k === KEY.ENTER) { var go = exitSel === 1; closeExitAsk(); if (go) goBack(); }
+    else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) closeExitAsk();
+  }
+
   // ---------- Keys ----------
 
   function onKey(e) {
@@ -483,28 +530,37 @@
       e.preventDefault();
       return;
     }
-    // Diagnostics: ↑, Back, OK or Red closes it.
+    if (exitOpen) { exitKey(k); e.preventDefault(); return; }
+    // Diagnostics: ↑, Back or Red closes it; OK closes it and plays the weather effect test.
     if (diagOpen) {
-      if (k === KEY.UP || k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE || k === KEY.ENTER ||
-          k === KEY.RED || k === 68) toggleDiag();
+      if (k === KEY.UP || k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE || k === KEY.RED || k === 68) toggleDiag();
+      else if (k === KEY.ENTER) { toggleDiag(); fxDemo(); }
       e.preventDefault();
       return;
     }
     // ↓ on the dock opens diagnostics (for remotes without colour buttons).
     if (k === KEY.DOWN && area === 'dock') { toggleDiag(); e.preventDefault(); return; }
     // Areas from top to bottom: weather, calendar, dock.
-    if (k === KEY.UP && !diagOpen) setArea(area === 'dock' ? 'cal' : 'weather');
-    else if (k === KEY.DOWN && !diagOpen) setArea(area === 'weather' ? 'cal' : 'dock');
-    else if (k === KEY.LEFT) { if (area === 'dock') setFocus(focus - 1); }
-    else if (k === KEY.RIGHT) { if (area === 'dock') setFocus(focus + 1); }
+    // The joke card (left) sits beside the calendar: ← from the calendar reaches it.
+    if (k === KEY.UP) setArea(area === 'dock' ? 'cal' : 'weather');
+    else if (k === KEY.DOWN) setArea(area === 'weather' ? 'cal' : 'dock');
+    else if (k === KEY.LEFT) {
+      if (area === 'dock') setFocus(focus - 1);
+      else if (area === 'cal' && jokeVisible()) setArea('joke');
+      else if (area === 'joke' && jokeSel === 1) { jokeSel = 0; renderJoke(); }
+    }
+    else if (k === KEY.RIGHT) {
+      if (area === 'dock') setFocus(focus + 1);
+      else if (area === 'joke') { if (jokeSel === 0) { jokeSel = 1; renderJoke(); } else setArea('cal'); }
+    }
     else if (k === KEY.ENTER) {
-      if (diagOpen) return;
-      if (area === 'weather') openPicker();
+      if (area === 'joke') jokeAction();
+      else if (area === 'weather') openPicker();
       else if (area === 'cal') { if (calCfg) openAgenda(); else openCalSetup(); }
       else launch(APPS[focus]);
     }
     else if ((k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) && area !== 'dock') setArea('dock');
-    else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) goBack();
+    else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) openExitAsk();
     else if (k === KEY.RED || k === 68 /* D */) toggleDiag();
     else if (k === KEY.GREEN || k === 87 /* W */) nextWall();
     else return;
@@ -541,12 +597,35 @@
     return '';
   }
 
-  function setEffect(kind) {
-    if (FORCE_FX) kind = FORCE_FX === 'none' ? '' : FORCE_FX;
-    if (!WX_EFFECTS) kind = '';
+  var fxNow = '';          // effect chosen from the weather
+  var fxDemoTimer = null;
+
+  function applyFx(kind) {
     var cls = kind ? 'on ' + kind : '';
     var fx = $('wxfx');
     if (fx && fx.className !== cls) fx.className = cls;
+  }
+
+  function setEffect(kind) {
+    if (FORCE_FX) kind = FORCE_FX === 'none' ? '' : FORCE_FX;
+    if (!WX_EFFECTS) kind = '';
+    fxNow = kind;
+    if (!fxDemoTimer) applyFx(kind);
+  }
+
+  // Test: plays each effect for 5 seconds (OK on the diagnostics screen).
+  function fxDemo() {
+    var list = ['drizzle', 'rain', 'heavy', 'thunder', 'snow', 'fog'];
+    var names = { drizzle: 'Drizzle', rain: 'Rain', heavy: 'Heavy rain', thunder: 'Thunderstorm', snow: 'Snow', fog: 'Fog' };
+    var i = 0;
+    clearTimeout(fxDemoTimer);
+    (function step() {
+      if (i >= list.length) { fxDemoTimer = null; applyFx(fxNow); toast('Effect test finished'); return; }
+      applyFx(list[i]);
+      toast('Effect test ' + (i + 1) + '/' + list.length + ': ' + names[list[i]]);
+      i++;
+      fxDemoTimer = setTimeout(step, 5000);
+    })();
   }
   var WX_TEXT = {
     0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog',
@@ -569,12 +648,16 @@
     area = a;
     $('weather').classList.toggle('focus', a === 'weather');
     $('cal').classList.toggle('focus', a === 'cal');
+    if (a === 'joke') jokeSel = 0;
+    renderJoke();
     tiles[focus].classList.toggle('focus', a === 'dock');
     $('label').textContent = a === 'weather'
       ? (wxLoc ? 'Weather for ' + wxLoc.name + '. Press OK to change' : 'Press OK to set your ZIP code')
       : a === 'cal'
         ? (calCfg ? 'Calendar. Press OK to see every event' : 'Press OK to add calendars')
-        : APPS[focus].name;
+        : a === 'joke'
+          ? '← → choose Next joke or Dismiss, then press OK'
+          : APPS[focus].name;
   }
 
   function renderWeather(w) {

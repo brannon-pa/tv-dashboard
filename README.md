@@ -33,7 +33,7 @@ Nothing is changed on the TV's system. Only two things are added:
 | ← → | Move along the dock |
 | ↑ / ↓ | Move between the dock, the calendar and the weather |
 | OK / Enter | Open the selected app (or set up the calendar or weather) |
-| Back | Leave the dashboard (returns to TizenBrew) |
+| Back | On the dock: asks "Exit the dashboard?" (Stay is selected; choose Exit to leave). Elsewhere: returns to the dock |
 | ↓ on the dock (or Red / A) | Diagnostics: shows whether the launcher works, each calendar's status and every app ID the TV reports. ↑ or Back closes it. |
 | Green (B) | Next wallpaper |
 
@@ -52,7 +52,8 @@ After a failure it retries every 5 minutes.
 **Weather effects:** when it's raining, snowing, stormy or foggy where you are, a light animation
 plays over the wallpaper: drizzle, rain, heavy rain, rain with lightning flashes, falling snow or
 drifting fog. Clear and cloudy weather show none. The effects only slide pre-drawn layers, which the
-TV's graphics chip handles, so they stay smooth on older TVs. To turn them off, set
+TV's graphics chip handles, so they stay smooth on older TVs. To see them all on the TV, open
+diagnostics (**↓** on the dock) and press **OK**: each effect plays for 5 seconds with a label. To turn them off, set
 `WX_EFFECTS = false` in `app.js`. To preview one in a browser, open `index.html?fx=snow` (or
 `drizzle`, `rain`, `heavy`, `thunder`, `fog`, `none`).
 
@@ -103,10 +104,13 @@ in place of each event's title, for when others can see the TV.
 A short, family-friendly joke appears under the date and changes at midnight. The jokes are
 built into `app.js` (the `JOKES` list), so nothing is downloaded. Set `SHOW_JOKE = false` to hide it.
 
+To reach it, select the calendar (**↑**) and press **←**. Then choose **Next joke** or **Dismiss** with
+**← →** and press **OK**. Dismiss hides the card until the next day, so the wallpaper shows through.
+
 ## Always-on behaviour
 
-- **Ambient mode:** after 3 minutes with no button presses, the dock fades away, leaving
-  just the clock and wallpaper. The clock drifts slightly every few minutes. Any button
+- **Ambient mode:** after 3 minutes with no button presses, the dock fades away and the calendar
+  fades and shrinks to the next few events, leaving mostly the clock and wallpaper. The clock drifts slightly every few minutes. Any button
   brings the dock back; that first press only wakes it.
 - **Night dimming:** the screen dims from 11 PM to 6 AM.
 - **Daily refresh:** the page reloads itself at 4 AM, so it stays fresh when left on for days.

@@ -30,6 +30,7 @@
     <div class="tag">Joke of the day</div>
     <div id="jokeQ"></div>
     <div id="jokeA"></div>
+    <div id="jokeBtns"><span id="jbNext" class="jbtn">Next joke</span><span id="jbHide" class="jbtn">Dismiss</span></div>
   </div>
 
   <div id="weather">
@@ -73,11 +74,16 @@
     <p class="hint">Calendar links are saved only on this TV. Back to cancel.</p>
   </div>
 
+  <div id="exitask" class="hidden">
+    <h2>Exit the dashboard?</h2>
+    <div><span id="exStay" class="jbtn">Stay</span><span id="exGo" class="jbtn">Exit</span></div>
+  </div>
+
   <div id="diag" class="hidden">
     <h2>Diagnostics</h2>
     <p id="diagStatus"></p>
     <pre id="diagList"></pre>
-    <p class="hint">↑ or Back to close</p>
+    <p class="hint">↑ or Back to close · OK to test the weather effects</p>
   </div>
 </div>
 <script src="ical.js"></script>
