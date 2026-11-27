@@ -416,9 +416,10 @@
         $('diagList').textContent = calDiagLines().join('\n');
         return;
       }
+      goTV(list);
       $('diagStatus').textContent = 'Launcher service: OK. ' + list.length + ' apps installed. Mode: ' + mode;
-      svcStatus = '';
       getJSON('/status', 3000, function (e2, st) {
+        if (!diagOpen) return;
         if (!e2 && st && st.reopen) {
           var r = st.reopen;
           svcStatus = (r.appId ? 'on, reopens ' + r.appId : 'OFF (' + (r.error || 'TizenBrew not found') + ')') +
@@ -427,8 +428,13 @@
         } else {
           svcStatus = 'not available (restart the TV to load the new service)';
         }
+        drawDiag(list);
       });
-      var lines = [];
+    });
+  }
+
+  function drawDiag(list) {
+      var lines = ['Auto-reopen after standby: ' + svcStatus, ''];
       for (var i = 0; i < APPS.length; i++) {
         lines.push((APPS[i].found ? 'OK   ' : '--   ') + APPS[i].name + (APPS[i].found ? '  ->  ' + APPS[i].found.id : '  (not matched)'));
         if (!APPS[i].found) {
@@ -438,12 +444,10 @@
           lines.push('       ' + (near.length ? 'similar: ' + near.slice(0, 3).join(', ') : 'no app with "' + word + '" in its name: probably not installed'));
         }
       }
-      if (svcStatus) lines.push('', 'Auto-reopen after standby: ' + svcStatus);
       lines = lines.concat(calDiagLines());
       lines.push('', 'All installed apps:');
       for (var j = 0; j < list.length; j++) lines.push(list[j].id + '   ' + list[j].name);
       $('diagList').textContent = lines.join('\n');
-    });
   }
 
   // ---------- Back / exit ----------
@@ -1036,17 +1040,21 @@
 
   // ---------- Start ----------
 
-  function connect(tries) {
+  function goTV(list) {
+    if (mode === 'tv') return;
+    mode = 'tv';
+    applyInstalled(list);
+    fetchCalendars();
+  }
+
+  // On the TV the service can take a while to start after a restart, so keep trying:
+  // every 2 s for the first 2 minutes, then every 30 s. In a desktop browser, try once.
+  function connect(onTV, attempt) {
     getJSON('/apps', 2500, function (err, list) {
-      if (!err) {
-        mode = 'tv';
-        applyInstalled(list);
-        fetchCalendars();
-        return;
-      }
-      // On the TV the service may still be starting; retry a few times.
-      if (tries > 0) setTimeout(function () { connect(tries - 1); }, 1500);
-      else fetchCalendars();
+      if (!err) { goTV(list); return; }
+      if (attempt === 0) fetchCalendars();       // show cached events / errors meanwhile
+      if (!onTV) return;
+      setTimeout(function () { connect(onTV, attempt + 1); }, attempt < 60 ? 2000 : 30000);
     });
   }
 
@@ -1075,7 +1083,7 @@
     }
 
     var onTV = !!window.tizen || /Tizen/i.test(navigator.userAgent);
-    connect(onTV ? 6 : 0);
+    connect(onTV, 0);
   }
 
   start();
