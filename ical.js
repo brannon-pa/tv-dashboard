@@ -320,5 +320,17 @@
     return out;
   }
 
-  window.ICal = { parse: parse };
+  // Quick scan without expanding anything, for diagnostics.
+  function stats(text, todayYmd) {
+    var t = String(text || '');
+    var re = /\nDTSTART[^:\n]*:(\d{8})/g;
+    var m, latest = '', fromToday = 0;
+    while ((m = re.exec(t))) {
+      if (m[1] > latest) latest = m[1];
+      if (m[1] >= todayYmd) fromToday++;
+    }
+    return { repeating: (t.match(/\nRRULE:/g) || []).length, latest: latest, fromToday: fromToday };
+  }
+
+  window.ICal = { parse: parse, stats: stats };
 })();

@@ -14,6 +14,13 @@
  *   GET /calsetup/start?code=1234&names=[...]  -> opens the one-time setup page
  *   GET /calsetup/result -> { done, cfg } once the setup form has been sent
  *   GET /calsetup/stop   -> closes the setup page
+ *   GET /status          -> { ok, reopen: {...} } for the diagnostics screen
+ *
+ * Auto-reopen: when the TV is switched off with the remote it usually goes into standby,
+ * which pauses this service. On wake-up the TV starts its live-TV / Samsung TV Plus screen.
+ * This service notices the pause (its 5-second timer suddenly skips ahead) and reopens
+ * TizenBrew, which then opens the dashboard if it is set as TizenBrew's Autolaunch module.
+ * It only ever launches TizenBrew itself.
  *
  * Calendar setup page: only while the dashboard's setup screen is open, a small form is
  * served on the TV's Wi-Fi address (port 8094) so calendar links can be pasted from a
@@ -260,10 +267,15 @@
       readBody(req, 8192, function (link) {
         link = String(link).trim().replace(/^webcal:\/\//i, 'https://');
         if (!/^https:\/\/[^\s]+$/i.test(link)) return send(res, 400, 'bad link', 'text/plain');
-        fetchICS(link, 3, function (err, text) {
-          if (err) return send(res, 502, String(err.message || err), 'text/plain');
-          send(res, 200, text, 'text/calendar; charset=utf-8');
-        });
+        // Retry if the download ends before END:VCALENDAR (cut short).
+        (function attempt(n) {
+          fetchICS(link, 3, function (err, text) {
+            var complete = !err && /END:VCALENDAR\s*$/.test(text);
+            if (!complete && n > 1) return setTimeout(function () { attempt(n - 1); }, 2000);
+            if (err) return send(res, 502, String(err.message || err), 'text/plain');
+            send(res, 200, text, 'text/calendar; charset=utf-8');
+          });
+        })(3);
       });
       return true;
     }
@@ -298,9 +310,66 @@
     return false;
   }
 
+  // ---------- Auto-reopen TizenBrew after standby ----------
+
+  var REOPEN_ENABLED = true;
+  var TICK_MS = 5000;
+  var WAKE_GAP_MS = 60000;   // timer late by more than this = the TV was in standby
+  var reopen = { appId: null, wakes: 0, lastWake: '', lastError: '', error: '' };
+
+  function findTizenBrew() {
+    var myPkg = null, myId = null;
+    try {
+      var cur = tizen.application.getCurrentApplication();
+      myId = cur.appInfo.id;
+      myPkg = cur.appInfo.packageId;
+    } catch (e) { reopen.error = 'getCurrentApplication: ' + (e.message || e); }
+    try {
+      tizen.application.getAppsInfo(function (infos) {
+        var byPkg = null, byName = null;
+        for (var i = 0; i < infos.length; i++) {
+          var a = infos[i];
+          if (myPkg && a.packageId === myPkg && a.id !== myId && a.show !== false) byPkg = a.id;
+          if (/tizenbrew/i.test(a.name || '') && a.show !== false) byName = a.id;
+        }
+        reopen.appId = byPkg || byName;
+        if (reopen.appId) reopen.error = '';
+        else if (!reopen.error) reopen.error = 'TizenBrew app not found';
+      }, function (e) { reopen.error = 'getAppsInfo: ' + (e && e.message); });
+    } catch (e) { reopen.error = 'getAppsInfo: ' + (e.message || e); }
+  }
+
+  function reopenTizenBrew() {
+    if (!reopen.appId) return;
+    try {
+      tizen.application.launch(reopen.appId, function () { reopen.lastError = ''; },
+        function (e) { reopen.lastError = (e && (e.message || e.name)) || 'launch failed'; });
+    } catch (e) { reopen.lastError = String(e.message || e); }
+  }
+
+  if (REOPEN_ENABLED) {
+    findTizenBrew();
+    var lastTick = Date.now();
+    setInterval(function () {
+      var now = Date.now();
+      if (now - lastTick > WAKE_GAP_MS) {
+        reopen.wakes++;
+        reopen.lastWake = new Date(now).toString().slice(0, 24);
+        // Give the TV a few seconds to finish waking (and start TV Plus), then take over.
+        setTimeout(reopenTizenBrew, 4000);
+        setTimeout(reopenTizenBrew, 12000);
+      }
+      lastTick = now;
+    }, TICK_MS);
+  }
+
   var server = http.createServer(function (req, res) {
     var u = url.parse(req.url, true);
     if (calRoute(req, res, u)) return;
+    if (u.pathname === '/status') {
+      send(res, 200, JSON.stringify({ ok: true, reopen: reopen }));
+      return;
+    }
     if (u.pathname === '/apps') {
       listApps(function (err, apps) {
         if (err) return send(res, 500, JSON.stringify({ ok: false, error: String(err.message || err) }));

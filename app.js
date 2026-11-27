@@ -299,6 +299,7 @@
   // ---------- Diagnostics overlay (↓ on the dock, the Red button, or D on a keyboard) ----------
 
   var diagOpen = false;
+  var svcStatus = '';
 
   function calDiagLines() {
     var lines = ['', 'Calendars:'];
@@ -330,10 +331,27 @@
         return;
       }
       $('diagStatus').textContent = 'Launcher service: OK. ' + list.length + ' apps installed. Mode: ' + mode;
+      svcStatus = '';
+      getJSON('/status', 3000, function (e2, st) {
+        if (!e2 && st && st.reopen) {
+          var r = st.reopen;
+          svcStatus = (r.appId ? 'on, reopens ' + r.appId : 'OFF (' + (r.error || 'TizenBrew not found') + ')') +
+            '; wakes seen: ' + r.wakes + (r.lastWake ? ', last ' + r.lastWake : '') + (r.lastError ? '; last error: ' + r.lastError : '');
+        } else {
+          svcStatus = 'not available (restart the TV to load the new service)';
+        }
+      });
       var lines = [];
       for (var i = 0; i < APPS.length; i++) {
         lines.push((APPS[i].found ? 'OK   ' : '--   ') + APPS[i].name + (APPS[i].found ? '  ->  ' + APPS[i].found.id : '  (not matched)'));
+        if (!APPS[i].found) {
+          var word = APPS[i].name.split(/[\s+]/)[0].toLowerCase();
+          var near = list.filter(function (x) { return String(x.name).toLowerCase().indexOf(word) >= 0; })
+                         .map(function (x) { return x.id + ' "' + x.name + '"'; });
+          lines.push('       ' + (near.length ? 'similar: ' + near.slice(0, 3).join(', ') : 'no app with "' + word + '" in its name: probably not installed'));
+        }
       }
+      if (svcStatus) lines.push('', 'Auto-reopen after standby: ' + svcStatus);
       lines = lines.concat(calDiagLines());
       lines.push('', 'All installed apps:');
       for (var j = 0; j < list.length; j++) lines.push(list[j].id + '   ' + list[j].name);
@@ -435,7 +453,8 @@
     if (FORCE_FX) kind = FORCE_FX === 'none' ? '' : FORCE_FX;
     if (!WX_EFFECTS) kind = '';
     var cls = kind ? 'on ' + kind : '';
-    if ($('wxfx').className !== cls) $('wxfx').className = cls;
+    var fx = $('wxfx');
+    if (fx && fx.className !== cls) fx.className = cls;
   }
   var WX_TEXT = {
     0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog',
@@ -767,8 +786,13 @@
           anyOk = true;
           var head = String(text).slice(0, 24).replace(/[\r\n]+/g, ' ');
           var total = (String(text).match(/BEGIN:VEVENT/g) || []).length;
+          var td = new Date();
+          var ymd = String(td.getFullYear()) + (td.getMonth() < 9 ? '0' : '') + (td.getMonth() + 1) + (td.getDate() < 10 ? '0' : '') + td.getDate();
+          var st = window.ICal.stats(text, ymd);
           calStatus[idx] = 'OK, ' + list.length + ' events this week (' + fmtTime(Date.now()) + '); file ' +
-            Math.round(String(text).length / 1024) + ' KB, ' + total + ' events in all, starts "' + head + '"';
+            Math.round(String(text).length / 1024) + ' KB, ' + total + ' events in all (' + st.repeating + ' repeating), ' +
+            st.fromToday + ' dated today or later, latest ' + (st.latest ? st.latest.substr(0, 4) + '-' + st.latest.substr(4, 2) + '-' + st.latest.substr(6, 2) : 'none') +
+            ', starts "' + head + '"' + (/END:VCALENDAR\s*$/.test(String(text)) ? ', complete' : ', INCOMPLETE (download cut short)');
           results[idx] = { items: list };
         }
         if (--pending) return;

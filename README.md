@@ -107,6 +107,13 @@ You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
 
 ### Opening the dashboard automatically
 
+- **Auto-reopen after standby:** when the TV is switched on again after being put in standby with
+  the remote, it may open its own live-TV / Samsung TV Plus screen. The dashboard's service notices
+  the TV waking up and reopens TizenBrew a few seconds later. This only works if TizenBrew was
+  already running before standby, and if TizenBrew's Autolaunch is set to the dashboard (see below).
+  The diagnostics screen shows whether it's active and how many wake-ups it has seen.
+  To turn it off, set `REOPEN_ENABLED = false` in `service.js`.
+
 - In **TizenBrew**, open **Settings** → **Autolaunch Settings**, select **Dashboard** and confirm.
   TizenBrew will then open the dashboard as soon as it starts.
   To skip auto-launch once, hold **Up** while TizenBrew is opening.
