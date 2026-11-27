@@ -225,3 +225,54 @@ body.ambient #credit { opacity: 0; }
 }
 body.night #dim { opacity: 0.6; }
 #toast, #diag { z-index: 60; }
+
+/* ---------- Weather ---------- */
+
+#weather {
+  position: absolute;
+  right: 112px;
+  top: 96px;
+  min-width: 260px;
+  padding: 14px 22px;
+  border-radius: 22px;
+  text-align: right;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 2px 30px rgba(0,0,0,0.45);
+}
+#weather.focus {
+  background: rgba(20,22,26,0.45);
+  box-shadow: 0 0 0 4px #fff;
+}
+#wxTemp { font-size: 96px; font-weight: 200; line-height: 1; letter-spacing: -2px; }
+#wxDesc { margin-top: 10px; font-size: 32px; font-weight: 300; opacity: 0.9; }
+#wxRange { margin-top: 6px; font-size: 26px; font-weight: 300; opacity: 0.7; }
+#weather.setup #wxDesc, #weather.setup #wxRange { opacity: 0.8; }
+
+#picker {
+  position: absolute;
+  left: 460px;
+  top: 250px;
+  width: 1000px;
+  padding: 44px 56px;
+  box-sizing: border-box;
+  border-radius: 28px;
+  background: rgba(10,12,15,0.94);
+  text-align: center;
+  font-size: 26px;
+  z-index: 60;
+}
+#picker h2 { margin: 0 0 6px; font-weight: 400; font-size: 40px; }
+#picker p { margin: 10px 0; opacity: 0.85; }
+#picker .hint { font-size: 20px; opacity: 0.5; margin-top: 26px; }
+#pickDigits { margin: 30px 0 20px; }
+.digit {
+  display: inline-block;
+  width: 96px;
+  height: 120px;
+  line-height: 120px;
+  margin: 0 10px;
+  border-radius: 18px;
+  background: #1c1f24;
+  font-size: 72px;
+  font-weight: 300;
+}
+.digit.on { background: #fff; color: #000; }

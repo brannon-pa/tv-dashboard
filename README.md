@@ -29,12 +29,26 @@ Nothing is changed on the TV's system. Only two things are added:
 | Button | Action |
 |---|---|
 | ← → | Move along the dock |
+| ↑ / ↓ | Move between the dock and the weather (top right) |
 | OK / Enter | Open the selected app |
 | Back | Leave the dashboard (returns to TizenBrew) |
 | Red (A) | Diagnostics: shows whether the launcher works and every app ID the TV reports |
 | Green (B) | Next wallpaper |
 
 Wallpapers change every 5 minutes. The dashboard remembers the last selected app.
+
+## Weather
+
+The top-right corner shows the current temperature, conditions and today's high and low,
+updated every 30 minutes from [Open-Meteo](https://open-meteo.com), which is free and needs no account.
+
+**To set it up:** press **↑** to select the weather, press **OK**, and enter your ZIP code.
+Use ← → to choose a digit and ↑ ↓ to change it, then press **OK**.
+Enter `00000` to turn weather off.
+
+**Privacy:** your ZIP code and its approximate coordinates are saved only on the TV, in the
+dashboard's local storage. They are never in this repo. The TV sends those coordinates to
+Open-Meteo to get the forecast.
 
 ## Always-on behaviour
 
@@ -121,6 +135,11 @@ Samsung firmware updates can remove sideloaded apps and reset Developer Mode.
     `APPS` in `app.js`.
 - **Back doesn't leave the dashboard:** press the Home button. Samsung may not let a
   TizenBrew page close itself.
+
+## Credits
+
+Weather data by [Open-Meteo.com](https://open-meteo.com), licensed
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## Wallpaper credits
 

@@ -60,11 +60,13 @@
     return null;
   }
 
-  function getJSON(path, timeoutMs, cb) {
+  function getJSON(path, timeoutMs, cb) { getURL(SERVICE + path, timeoutMs, cb); }
+
+  function getURL(url, timeoutMs, cb) {
     var xhr = new XMLHttpRequest();
     var done = false;
     function finish(err, data) { if (!done) { done = true; cb(err, data); } }
-    xhr.open('GET', SERVICE + path, true);
+    xhr.open('GET', url, true);
     xhr.timeout = timeoutMs;
     xhr.onload = function () {
       if (xhr.status !== 200) return finish(new Error('HTTP ' + xhr.status));
@@ -302,14 +304,153 @@
     poke();
     // In ambient mode, the first press only brings the dock back.
     if (ambient) { setAmbient(false); e.preventDefault(); return; }
-    if (k === KEY.LEFT) setFocus(focus - 1);
-    else if (k === KEY.RIGHT) setFocus(focus + 1);
-    else if (k === KEY.ENTER) { if (!diagOpen) launch(APPS[focus]); }
+    if (pickerOpen) { pickerKey(k); e.preventDefault(); return; }
+    if (k === KEY.UP && !diagOpen) setArea('weather');
+    else if (k === KEY.DOWN && !diagOpen) setArea('dock');
+    else if (k === KEY.LEFT) { if (area === 'dock') setFocus(focus - 1); }
+    else if (k === KEY.RIGHT) { if (area === 'dock') setFocus(focus + 1); }
+    else if (k === KEY.ENTER) {
+      if (diagOpen) return;
+      if (area === 'weather') openPicker(); else launch(APPS[focus]);
+    }
+    else if ((k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) && area === 'weather') setArea('dock');
     else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) goBack();
     else if (k === KEY.RED || k === 68 /* D */) toggleDiag();
     else if (k === KEY.GREEN || k === 87 /* W */) nextWall();
     else return;
     e.preventDefault();
+  }
+
+  // ---------- Weather (Open-Meteo: free, no account; location kept only on this TV) ----------
+
+  var WX_REFRESH_MS = 30 * 60 * 1000;
+  var WX_MAX_AGE_MS = 3 * 60 * 60 * 1000; // hide readings older than 3 hours
+  var WX_TEXT = {
+    0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog',
+    51: 'Drizzle', 53: 'Drizzle', 55: 'Drizzle', 56: 'Freezing drizzle', 57: 'Freezing drizzle',
+    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Freezing rain',
+    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow', 80: 'Showers', 81: 'Showers',
+    82: 'Heavy showers', 85: 'Snow showers', 86: 'Snow showers', 95: 'Thunderstorms',
+    96: 'Thunderstorms', 99: 'Thunderstorms'
+  };
+
+  var area = 'dock';     // 'dock' or 'weather'
+  var wxLoc = null;      // { zip, name, lat, lon }
+  var wxTimer = null;
+
+  function loadJSON(key) {
+    try { return JSON.parse(store(key) || 'null'); } catch (e) { return null; }
+  }
+
+  function setArea(a) {
+    area = a;
+    $('weather').classList.toggle('focus', a === 'weather');
+    tiles[focus].classList.toggle('focus', a === 'dock');
+    $('label').textContent = a === 'weather'
+      ? (wxLoc ? 'Weather for ' + wxLoc.name + '. Press OK to change' : 'Press OK to set your ZIP code')
+      : APPS[focus].name;
+  }
+
+  function renderWeather(w) {
+    var fresh = w && (Date.now() - w.t) < WX_MAX_AGE_MS;
+    if (!wxLoc) {
+      $('wxTemp').textContent = '';
+      $('wxDesc').textContent = 'Weather';
+      $('wxRange').textContent = 'Press ↑ then OK to set up';
+      $('weather').className = area === 'weather' ? 'setup focus' : 'setup';
+      return;
+    }
+    $('weather').className = area === 'weather' ? 'focus' : '';
+    if (!fresh) {
+      $('wxTemp').textContent = '';
+      $('wxDesc').textContent = wxLoc.name;
+      $('wxRange').textContent = 'Weather unavailable';
+      return;
+    }
+    $('wxTemp').textContent = Math.round(w.temp) + '°';
+    $('wxDesc').textContent = WX_TEXT[w.code] || '';
+    $('wxRange').textContent = 'H ' + Math.round(w.hi) + '°  L ' + Math.round(w.lo) + '°';
+  }
+
+  function fetchWeather() {
+    clearTimeout(wxTimer);
+    wxTimer = setTimeout(fetchWeather, WX_REFRESH_MS);
+    if (!wxLoc) { renderWeather(null); return; }
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + wxLoc.lat + '&longitude=' + wxLoc.lon +
+      '&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min' +
+      '&temperature_unit=fahrenheit&timezone=auto&forecast_days=1';
+    getURL(url, 15000, function (err, d) {
+      if (err || !d || !d.current || !d.daily) { renderWeather(loadJSON('dash.wx.last')); return; }
+      var w = { t: Date.now(), temp: d.current.temperature_2m, code: d.current.weather_code,
+                hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0] };
+      store('dash.wx.last', JSON.stringify(w));
+      renderWeather(w);
+    });
+  }
+
+  // ZIP picker: Left/Right choose a digit, Up/Down change it, OK looks it up, Back cancels.
+  var pickerOpen = false;
+  var pickDigits = [0, 0, 0, 0, 0];
+  var pickPos = 0;
+
+  function drawPicker(msg) {
+    var html = '';
+    for (var i = 0; i < 5; i++) {
+      html += '<span class="digit' + (i === pickPos ? ' on' : '') + '">' + pickDigits[i] + '</span>';
+    }
+    $('pickDigits').innerHTML = html;
+    if (msg !== undefined) $('pickMsg').textContent = msg;
+  }
+
+  function openPicker() {
+    pickerOpen = true;
+    var z = wxLoc ? wxLoc.zip : '00000';
+    for (var i = 0; i < 5; i++) pickDigits[i] = parseInt(z.charAt(i), 10) || 0;
+    pickPos = 0;
+    $('picker').className = '';
+    drawPicker('← → choose a digit · ↑ ↓ change it · OK to save · Back to cancel. Set 00000 to turn weather off.');
+  }
+
+  function closePicker() {
+    pickerOpen = false;
+    $('picker').className = 'hidden';
+    setArea('weather');
+  }
+
+  function pickerKey(k) {
+    if (k === KEY.LEFT) pickPos = (pickPos + 4) % 5;
+    else if (k === KEY.RIGHT) pickPos = (pickPos + 1) % 5;
+    else if (k === KEY.UP) pickDigits[pickPos] = (pickDigits[pickPos] + 1) % 10;
+    else if (k === KEY.DOWN) pickDigits[pickPos] = (pickDigits[pickPos] + 9) % 10;
+    else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) { closePicker(); return; }
+    else if (k >= 48 && k <= 57) { pickDigits[pickPos] = k - 48; pickPos = Math.min(pickPos + 1, 4); }
+    else if (k === KEY.ENTER) { saveZip(pickDigits.join('')); return; }
+    drawPicker();
+  }
+
+  function saveZip(zip) {
+    if (zip === '00000') {
+      wxLoc = null;
+      store('dash.wx.loc', '');
+      store('dash.wx.last', '');
+      closePicker();
+      fetchWeather();
+      toast('Weather turned off');
+      return;
+    }
+    drawPicker('Looking up ' + zip + ' ...');
+    var url = 'https://geocoding-api.open-meteo.com/v1/search?count=1&countryCode=US&format=json&name=' + zip;
+    getURL(url, 15000, function (err, d) {
+      var r = !err && d && d.results && d.results[0];
+      if (!r) { drawPicker('Couldn’t find ZIP ' + zip + '. Check it and press OK again.'); return; }
+      wxLoc = { zip: zip, name: r.name + (r.admin1 ? ', ' + r.admin1 : ''),
+                lat: Math.round(r.latitude * 100) / 100, lon: Math.round(r.longitude * 100) / 100 };
+      store('dash.wx.loc', JSON.stringify(wxLoc));
+      store('dash.wx.last', '');
+      closePicker();
+      fetchWeather();
+      toast('Weather set to ' + wxLoc.name);
+    });
   }
 
   // ---------- Start ----------
@@ -335,6 +476,10 @@
     setFocus(f >= 0 && f < APPS.length ? f : 0);
     document.addEventListener('keydown', onKey);
     poke();
+
+    wxLoc = loadJSON('dash.wx.loc');
+    renderWeather(loadJSON('dash.wx.last'));
+    fetchWeather();
 
     var w = parseInt(store('dash.wall'), 10);
     if (WALLPAPERS.length) {
