@@ -22,16 +22,19 @@
   ];
 
   // Rotating wallpapers (files in /wallpapers). Credits also listed in README.md.
+  // "when": 'day' (bright), 'night' (dark) or 'any'. Daytime shows day + any; evening and night show night + any.
   var WALLPAPERS = [
-    { file: '01-alpine-lake-eibsee.jpg',   credit: 'Philipp / Unsplash' },
-    { file: '02-alpine-lake-klontal.jpg',  credit: 'Christopher Politano / Unsplash' },
-    { file: '03-forest-misty-pines.jpg',   credit: 'Dan Otis / Unsplash' },
-    { file: '04-forest-evergreen-fog.jpg', credit: 'Jacob Padilla / Unsplash' },
-    { file: '05-coast-torrey-pines.jpg',   credit: 'Lance Anderson / Unsplash' },
-    { file: '06-coast-knysna.jpg',         credit: 'De wet Cilliers / Unsplash' },
-    { file: '07-desert-atacama-dunes.jpg', credit: 'Marek Piwnicki / Unsplash' },
-    { file: '08-aurora-lofoten.jpg',       credit: 'Matthieu Gouiffes / Unsplash' }
+    { file: '01-alpine-lake-eibsee.jpg',   when: 'any',   credit: 'Philipp / Unsplash' },
+    { file: '02-alpine-lake-klontal.jpg',  when: 'day',   credit: 'Christopher Politano / Unsplash' },
+    { file: '03-forest-misty-pines.jpg',   when: 'any',   credit: 'Dan Otis / Unsplash' },
+    { file: '04-forest-evergreen-fog.jpg', when: 'day',   credit: 'Jacob Padilla / Unsplash' },
+    { file: '05-coast-torrey-pines.jpg',   when: 'day',   credit: 'Lance Anderson / Unsplash' },
+    { file: '06-coast-knysna.jpg',         when: 'day',   credit: 'De wet Cilliers / Unsplash' },
+    { file: '07-desert-atacama-dunes.jpg', when: 'day',   credit: 'Marek Piwnicki / Unsplash' },
+    { file: '08-aurora-lofoten.jpg',       when: 'night', credit: 'Matthieu Gouiffes / Unsplash' }
   ];
+  var DAY_START = 7;   // 'day' wallpapers from 7 AM ...
+  var DAY_END = 18;    // ... until 6 PM
   var WALL_INTERVAL_MS = 5 * 60 * 1000;
 
   // The TV's own app icons are old and low-res, so tiles show clean name labels.
@@ -110,6 +113,9 @@
     var night = NIGHT_START > NIGHT_END ? (h >= NIGHT_START || h < NIGHT_END) : (h >= NIGHT_START && h < NIGHT_END);
     document.body.classList.toggle('night', night);
 
+    // Switch to a fitting wallpaper when day turns to evening (or back).
+    if (wallIdx >= 0 && !wallFits(wallIdx)) nextWall();
+
     // In ambient mode, drift the clock a little every few minutes.
     if (ambient && m % 3 === 0) drift();
 
@@ -174,9 +180,25 @@
     img.src = 'wallpapers/' + w.file;
   }
 
+  function isDaytime() {
+    var h = new Date().getHours();
+    return h >= DAY_START && h < DAY_END;
+  }
+
+  function wallFits(i) {
+    var when = WALLPAPERS[i].when || 'any';
+    return when === 'any' || when === (isDaytime() ? 'day' : 'night');
+  }
+
   function nextWall() {
     if (!WALLPAPERS.length) return;
-    showWall((wallIdx + 1) % WALLPAPERS.length);
+    var n = WALLPAPERS.length;
+    var next = (wallIdx + 1) % n;
+    for (var k = 1; k <= n; k++) {
+      var i = (wallIdx + k + n) % n;
+      if (wallFits(i)) { next = i; break; }
+    }
+    showWall(next);
     clearInterval(wallTimer);
     wallTimer = setInterval(nextWall, WALL_INTERVAL_MS);
   }
@@ -325,6 +347,7 @@
 
   var WX_REFRESH_MS = 30 * 60 * 1000;
   var WX_RETRY_MS = 5 * 60 * 1000;   // after a failed fetch
+  var FORCE_NWS = /[?&]wx=nws/.test(window.location.search); // testing: index.html?wx=nws
   var WX_MAX_AGE_MS = 3 * 60 * 60 * 1000; // hide readings older than 3 hours
   var WX_TEXT = {
     0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog',
@@ -369,8 +392,11 @@
       return;
     }
     $('wxTemp').textContent = Math.round(w.temp) + '°';
-    $('wxDesc').textContent = WX_TEXT[w.code] || '';
-    $('wxRange').textContent = 'H ' + Math.round(w.hi) + '°  L ' + Math.round(w.lo) + '°';
+    $('wxDesc').textContent = w.text || WX_TEXT[w.code] || '';
+    var range = [];
+    if (w.hi !== null && w.hi !== undefined) range.push('H ' + Math.round(w.hi) + '°');
+    if (w.lo !== null && w.lo !== undefined) range.push('L ' + Math.round(w.lo) + '°');
+    $('wxRange').textContent = range.join('  ');
   }
 
   function fetchWeather() {
@@ -380,18 +406,51 @@
     var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + wxLoc.lat + '&longitude=' + wxLoc.lon +
       '&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min' +
       '&temperature_unit=fahrenheit&timezone=auto&forecast_days=1';
-    getURL(url, 15000, function (err, d) {
-      if (err || !d || !d.current || !d.daily) {
-        // Keep showing the last good reading, and retry sooner than usual.
+    function done(w) {
+      if (!w) {
+        // Both sources failed: keep showing the last good reading, and retry sooner than usual.
         renderWeather(loadJSON('dash.wx.last'));
         clearTimeout(wxTimer);
         wxTimer = setTimeout(fetchWeather, WX_RETRY_MS);
         return;
       }
-      var w = { t: Date.now(), temp: d.current.temperature_2m, code: d.current.weather_code,
-                hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0] };
       store('dash.wx.last', JSON.stringify(w));
       renderWeather(w);
+    }
+    if (FORCE_NWS) { fetchNWS(done); return; }
+    getURL(url, 15000, function (err, d) {
+      if (err || !d || !d.current || !d.daily) { fetchNWS(done); return; } // backup source
+      done({ t: Date.now(), temp: d.current.temperature_2m, text: WX_TEXT[d.current.weather_code] || '',
+             hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0] });
+    });
+  }
+
+  // Backup source: US National Weather Service (free, no account). The grid lookup is cached.
+  function fetchNWS(cb) {
+    var cached = loadJSON('dash.wx.nws');
+    function withGrid(g) {
+      getURL(g.hourly, 20000, function (err, h) {
+        var now = !err && h && h.properties && h.properties.periods && h.properties.periods[0];
+        if (!now) return cb(null);
+        getURL(g.forecast, 20000, function (err2, f) {
+          var ps = (!err2 && f && f.properties && f.properties.periods) || [];
+          var hi = null, lo = null;
+          for (var i = 0; i < ps.length && (hi === null || lo === null); i++) {
+            if (ps[i].isDaytime && hi === null) hi = ps[i].temperature;
+            if (!ps[i].isDaytime && lo === null) lo = ps[i].temperature;
+          }
+          cb({ t: Date.now(), temp: now.temperature, text: String(now.shortForecast || '').split(' then ')[0],
+               hi: hi, lo: lo });
+        });
+      });
+    }
+    if (cached && cached.lat === wxLoc.lat && cached.lon === wxLoc.lon) { withGrid(cached); return; }
+    getURL('https://api.weather.gov/points/' + wxLoc.lat + ',' + wxLoc.lon, 20000, function (err, d) {
+      var p = !err && d && d.properties;
+      if (!p || !p.forecast || !p.forecastHourly) return cb(null);
+      var g = { lat: wxLoc.lat, lon: wxLoc.lon, forecast: p.forecast, hourly: p.forecastHourly };
+      store('dash.wx.nws', JSON.stringify(g));
+      withGrid(g);
     });
   }
 

@@ -35,16 +35,22 @@ Nothing is changed on the TV's system. Only two things are added:
 | Red (A) | Diagnostics: shows whether the launcher works and every app ID the TV reports |
 | Green (B) | Next wallpaper |
 
-Wallpapers change every 5 minutes. The dashboard remembers the last selected app.
+Wallpapers change every 5 minutes and follow the time of day: bright photos from 7 AM to 6 PM,
+darker ones in the evening and at night. Each wallpaper's `when` tag in `app.js` (`day`, `night`
+or `any`) controls this. The dashboard remembers the last selected app.
 
 ## Weather
 
 The top-right corner shows the current temperature, conditions and today's high and low,
 updated every 30 minutes from [Open-Meteo](https://open-meteo.com), which is free and needs no account.
+If Open-Meteo is unreachable, the dashboard falls back to the US
+[National Weather Service](https://www.weather.gov/documentation/services-web-api) (also free).
+After a failure it retries every 5 minutes.
 
 **To set it up:** press **↑** to select the weather, press **OK**, and enter your ZIP code.
 Use ← → to choose a digit and ↑ ↓ to change it, then press **OK**.
-Enter `00000` to turn weather off.
+Enter `00000` to turn weather off. ZIP codes missing from the free ZIP databases (some newer ones, such as
+97703) are resolved through a nearby ZIP in the same area.
 
 **Privacy:** your ZIP code and its approximate coordinates are saved only on the TV, in the
 dashboard's local storage. They are never in this repo. The TV sends those coordinates to
@@ -85,6 +91,7 @@ You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
 TizenBrew loads the **latest git tag** of this repo, not the latest commit.
 
 1. Commit your change and bump `version` in `package.json`.
+   To test the weather backup in a browser, open `index.html?wx=nws`.
 2. Tag and push it:
    ```bash
    git tag v1.0.1 && git push && git push --tags
@@ -139,7 +146,8 @@ Samsung firmware updates can remove sideloaded apps and reset Developer Mode.
 ## Credits
 
 Weather data by [Open-Meteo.com](https://open-meteo.com), licensed
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Backup forecasts from the US National Weather Service
+(public domain). ZIP lookups via Open-Meteo and [Zippopotam.us](https://zippopotam.us).
 
 ## Wallpaper credits
 
