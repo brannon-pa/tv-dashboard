@@ -47,6 +47,26 @@
 
   var appsCache = null;
 
+  // This file runs inside TizenBrew's own Node.js process (via vm), which also serves the
+  // dashboard page. An uncaught error here would stop that whole process and leave a black
+  // screen. So errors that come from this file (their stack mentions "evalmachine", the name
+  // vm gives this script) are caught and recorded instead. Other errors are re-thrown unchanged.
+  var lastCrash = '';
+  try {
+    if (typeof process !== 'undefined' && process.on && !process.__tvDashboardGuard) {
+      process.__tvDashboardGuard = true;
+      process.on('uncaughtException', function (e) {
+        var stack = String((e && e.stack) || e);
+        if (stack.indexOf('evalmachine') >= 0) {
+          lastCrash = new Date().toString().slice(0, 24) + ': ' + String((e && e.message) || e).slice(0, 200);
+          try { console.log('tv-dashboard service error (caught): ' + stack); } catch (x) { /* ignore */ }
+          return;
+        }
+        throw e;
+      });
+    }
+  } catch (e) { /* no process object: nothing to guard */ }
+
   function send(res, status, body, type) {
     res.writeHead(status, {
       'Content-Type': type || 'application/json',
@@ -129,6 +149,7 @@
   function readBody(req, max, cb) {
     var chunks = [];
     var size = 0;
+    req.on('error', function () { /* client went away */ });
     req.on('data', function (c) {
       size += c.length;
       if (size > max) { req.destroy(); return; }
@@ -152,6 +173,8 @@
         if (r.statusCode !== 200) { r.resume(); return finish(new Error('HTTP ' + r.statusCode)); }
         var chunks = [];
         var size = 0;
+        r.on('error', function (e) { finish(e); });
+        r.on('aborted', function () { finish(new Error('download aborted')); });
         r.on('data', function (c) {
           size += c.length;
           if (size > 20 * 1024 * 1024) { req.abort(); finish(new Error('calendar too large')); return; }
@@ -367,7 +390,7 @@
     var u = url.parse(req.url, true);
     if (calRoute(req, res, u)) return;
     if (u.pathname === '/status') {
-      send(res, 200, JSON.stringify({ ok: true, reopen: reopen }));
+      send(res, 200, JSON.stringify({ ok: true, reopen: reopen, lastCrash: lastCrash }));
       return;
     }
     if (u.pathname === '/apps') {

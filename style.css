@@ -291,25 +291,25 @@ body.night #dim { opacity: 0.6; }
   text-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 #cal.focus { box-shadow: 0 0 0 4px #fff; }
-#cal .day {
-  margin: 10px 0 4px;
-  font-size: 22px;
+#cal .day, #agenda .day {
+  margin: 8px 0 2px;
+  font-size: 21px;
   font-weight: 600;
   letter-spacing: 2px;
   text-transform: uppercase;
   opacity: 0.65;
 }
-#cal .day.first { margin-top: 0; }
-#cal .ev {
-  height: 46px;
-  line-height: 46px;
-  font-size: 30px;
+#cal .day.first, #agenda .day.first { margin-top: 0; }
+#cal .ev, #agenda .ev {
+  height: 40px;
+  line-height: 40px;
+  font-size: 28px;
   font-weight: 300;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#cal .dot {
+#cal .dot, #agenda .dot {
   display: inline-block;
   width: 14px;
   height: 14px;
@@ -317,13 +317,30 @@ body.night #dim { opacity: 0.6; }
   border-radius: 7px;
   vertical-align: 2px;
 }
-#cal .when {
+#cal .when, #agenda .when {
   display: inline-block;
   width: 160px;
   font-weight: 400;
   opacity: 0.9;
 }
-#cal .note { font-size: 24px; font-weight: 300; opacity: 0.75; margin-top: 6px; }
+#cal .note, #agenda .note { font-size: 23px; font-weight: 300; opacity: 0.75; margin-top: 4px; }
+
+#agenda {
+  position: absolute;
+  left: 360px;
+  top: 70px;
+  width: 1200px;
+  height: 940px;
+  padding: 40px 56px;
+  box-sizing: border-box;
+  border-radius: 28px;
+  background: rgba(10,12,15,0.94);
+  z-index: 60;
+}
+#agenda .ev { height: 48px; line-height: 48px; font-size: 32px; }
+#agenda .day { font-size: 23px; margin-top: 14px; }
+#agenda .when { width: 190px; }
+#agenda .hint { position: absolute; left: 56px; bottom: 24px; margin: 0; font-size: 22px; opacity: 0.55; }
 
 #calsetup {
   position: absolute;
@@ -431,3 +448,27 @@ body.night #dim { opacity: 0.6; }
     radial-gradient(ellipse 800px 240px at 3220px 380px, rgba(220,225,230,0.22), rgba(220,225,230,0) 70%);
 }
 #wxfx.fog #fxFog { display: block; animation: wxfog 90s linear infinite; }
+
+/* ---------- Joke of the day ---------- */
+
+#joke {
+  position: absolute;
+  left: 112px;
+  top: 400px;
+  width: 760px;
+  padding: 20px 28px 22px;
+  box-sizing: border-box;
+  border-radius: 26px;
+  background: rgba(12,14,18,0.5);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+#joke .tag {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-bottom: 8px;
+}
+#jokeQ { font-size: 32px; font-weight: 400; line-height: 1.3; }
+#jokeA { font-size: 30px; font-weight: 300; line-height: 1.3; margin-top: 8px; opacity: 0.8; }

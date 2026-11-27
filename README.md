@@ -68,6 +68,9 @@ Open-Meteo to get the forecast.
 
 The panel under the weather lists upcoming events from up to three calendars, for example three
 Gmail accounts: today, tomorrow, then the rest of the week, with a coloured dot per calendar.
+If there are more than fit, the panel says how many more there are today. Select the panel (**↑**) and
+press **OK** to see every event in a full-screen agenda; **↑ ↓** scroll it, **OK** opens calendar
+setup, and **Back** closes it.
 Calendars are downloaded every 15 minutes, so a new or changed event appears within about
 15 minutes. Repeating events, edited or cancelled repeats, and all-day events are supported.
 
@@ -76,7 +79,8 @@ Calendars are downloaded every 15 minutes, so a new or changed event appears wit
 1. In [Google Calendar](https://calendar.google.com) on a computer, open **Settings** (the gear icon).
 2. Under **Settings for my calendars** on the left, select the calendar, then **Integrate calendar**.
 3. Copy **Secret address in iCal format**. Repeat for each account.
-4. On the TV, press **↑** to select the calendar panel, then press **OK**. The TV shows an address
+4. On the TV, press **↑** to select the calendar panel, then press **OK** (once calendars are set up,
+   press **OK** again from the agenda). The TV shows an address
    like `http://192.168.1.50:8094` and a 4-digit code.
 5. On a computer or phone on the same Wi-Fi, open that address, name each calendar, paste its
    link, enter the code and select **Save to TV**.
@@ -94,6 +98,11 @@ in place of each event's title, for when others can see the TV.
   on the TV, locks after 5 wrong codes, and closes after saving or after 10 minutes.
 - Google Workspace (work or school) accounts may have secret links turned off by their admin.
 
+## Joke of the day
+
+A short, family-friendly joke appears under the date and changes at midnight. The jokes are
+built into `app.js` (the `JOKES` list), so nothing is downloaded. Set `SHOW_JOKE = false` to hide it.
+
 ## Always-on behaviour
 
 - **Ambient mode:** after 3 minutes with no button presses, the dock fades away, leaving
@@ -103,7 +112,7 @@ in place of each event's title, for when others can see the TV.
 - **Daily refresh:** the page reloads itself at 4 AM, so it stays fresh when left on for days.
 
 You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
-`NIGHT_START`, `NIGHT_END`, `RELOAD_HOUR`, `USE_TV_ICONS`, `WX_EFFECTS`).
+`NIGHT_START`, `NIGHT_END`, `RELOAD_HOUR`, `USE_TV_ICONS`, `WX_EFFECTS`, `SHOW_JOKE`).
 
 ### Opening the dashboard automatically
 

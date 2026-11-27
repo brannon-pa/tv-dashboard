@@ -46,7 +46,76 @@
   var NIGHT_START = 23;        // dim the screen from 11 PM ...
   var NIGHT_END = 6;           // ... until 6 AM
   var RELOAD_HOUR = 4;
-  var WX_EFFECTS = true;       // light rain / snow / fog animation that matches the current weather         // reload once a day at 4 AM so a page left on for days stays fresh
+  var WX_EFFECTS = true;
+  var SHOW_JOKE = true;        // joke of the day under the date
+
+  // Joke of the day: one per day from this list (changes at midnight, works offline).
+  var JOKES = [
+    ["Why did the scarecrow win an award?", "He was outstanding in his field."],
+    ["What do you call a fake noodle?", "An impasta."],
+    ["Why don't skeletons fight each other?", "They don't have the guts."],
+    ["What do you call a bear with no teeth?", "A gummy bear."],
+    ["Why did the bicycle fall over?", "It was two-tired."],
+    ["What do you call cheese that isn't yours?", "Nacho cheese."],
+    ["Why can't you trust stairs?", "They're always up to something."],
+    ["How does a penguin build its house?", "Igloos it together."],
+    ["Why did the math book look sad?", "It had too many problems."],
+    ["What did the ocean say to the beach?", "Nothing, it just waved."],
+    ["Why do cows wear bells?", "Because their horns don't work."],
+    ["What do you call a sleeping bull?", "A bulldozer."],
+    ["Why did the golfer bring two pairs of pants?", "In case he got a hole in one."],
+    ["What do you call a dinosaur that crashes the car?", "Tyrannosaurus wrecks."],
+    ["Why are elevator jokes so good?", "They work on many levels."],
+    ["What does a cloud wear under its raincoat?", "Thunderwear."],
+    ["Why did the cookie go to the doctor?", "It was feeling crummy."],
+    ["What did one wall say to the other?", "I'll meet you at the corner."],
+    ["Why don't eggs tell jokes?", "They'd crack each other up."],
+    ["What do you call a fish with no eyes?", "A fsh."],
+    ["How do you organize a space party?", "You planet."],
+    ["Why did the tomato blush?", "It saw the salad dressing."],
+    ["What's orange and sounds like a parrot?", "A carrot."],
+    ["Why did the coffee file a police report?", "It got mugged."],
+    ["What do you call a pig that does karate?", "A pork chop."],
+    ["Why did the picture go to jail?", "It was framed."],
+    ["What kind of tree fits in your hand?", "A palm tree."],
+    ["Why do bees have sticky hair?", "They use honeycombs."],
+    ["What did the grape do when it got stepped on?", "It let out a little wine."],
+    ["Why was the broom late?", "It overswept."],
+    ["What do you call a cow with no legs?", "Ground beef."],
+    ["Why don't oysters share their pearls?", "They're shellfish."],
+    ["What do you call an alligator in a vest?", "An investigator."],
+    ["How do you make a tissue dance?", "Put a little boogie in it."],
+    ["Why did the music teacher need a ladder?", "To reach the high notes."],
+    ["What did the janitor say when he jumped out of the closet?", "Supplies!"],
+    ["Why did the banana go to the doctor?", "It wasn't peeling well."],
+    ["What do you call a lazy kangaroo?", "A pouch potato."],
+    ["Why couldn't the leopard play hide and seek?", "He was always spotted."],
+    ["What do lawyers wear to court?", "Lawsuits."],
+    ["Why did the student eat his homework?", "The teacher said it was a piece of cake."],
+    ["What do you call a snowman with a six-pack?", "An abdominal snowman."],
+    ["Why did the computer go to the doctor?", "It had a virus."],
+    ["What do you call a belt made of watches?", "A waist of time."],
+    ["Why do seagulls fly over the sea?", "If they flew over the bay, they'd be bagels."],
+    ["What did the zero say to the eight?", "Nice belt."],
+    ["Why did the chicken join a band?", "It had the drumsticks."],
+    ["What do you call a can opener that doesn't work?", "A can't opener."],
+    ["How do mountains stay warm in winter?", "Snowcaps."],
+    ["Why don't some couples go to the gym?", "Some relationships don't work out."],
+    ["What's a skeleton's least favorite room?", "The living room."],
+    ["Why did the frog take the bus to work?", "His car got toad."],
+    ["What do you call a deer with no eyes?", "No idea."],
+    ["How does the moon cut his hair?", "Eclipse it."],
+    ["Why are ghosts bad liars?", "You can see right through them."],
+    ["What did the left eye say to the right eye?", "Between you and me, something smells."],
+    ["Why did the gym close down?", "It just didn't work out."],
+    ["What do you call a factory that makes okay products?", "A satisfactory."],
+    ["Why did the orange stop halfway up the hill?", "It ran out of juice."],
+    ["What did the big flower say to the little flower?", "Hi, bud!"],
+    ["Why do ducks have feathers?", "To cover their butt quacks."],
+    ["What do you get when you cross a snowman and a vampire?", "Frostbite."],
+    ["Why did the stadium get hot after the game?", "All the fans left."],
+    ["What's brown and sticky?", "A stick."]
+  ];       // light rain / snow / fog animation that matches the current weather         // reload once a day at 4 AM so a page left on for days stays fresh
 
   var KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, ENTER: 13, BACK: 10009, ESC: 27, BACKSPACE: 8, RED: 403, GREEN: 404 };
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -133,6 +202,7 @@
 
     // Drop finished events and roll "Tomorrow" into "Today".
     renderCal();
+    renderJoke(d);
 
     // Switch to a fitting wallpaper when day turns to evening (or back).
     if (wallIdx >= 0 && !wallFits(wallIdx)) nextWall();
@@ -147,6 +217,22 @@
     }
 
     setTimeout(tick, 60000 - d.getSeconds() * 1000 - d.getMilliseconds() + 50);
+  }
+
+  // ---------- Joke of the day ----------
+
+  var jokeDay = -1;
+  function renderJoke(d) {
+    var box = $('joke');
+    if (!box) return;
+    if (!SHOW_JOKE || !JOKES.length) { box.className = 'hidden'; return; }
+    var day = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+    if (day === jokeDay) return;
+    jokeDay = day;
+    var j = JOKES[day % JOKES.length];
+    $('jokeQ').textContent = j[0];
+    $('jokeA').textContent = j[1];
+    box.className = '';
   }
 
   // ---------- Ambient mode (dock hides after IDLE_MS; any button wakes it) ----------
@@ -336,7 +422,8 @@
         if (!e2 && st && st.reopen) {
           var r = st.reopen;
           svcStatus = (r.appId ? 'on, reopens ' + r.appId : 'OFF (' + (r.error || 'TizenBrew not found') + ')') +
-            '; wakes seen: ' + r.wakes + (r.lastWake ? ', last ' + r.lastWake : '') + (r.lastError ? '; last error: ' + r.lastError : '');
+            '; wakes seen: ' + r.wakes + (r.lastWake ? ', last ' + r.lastWake : '') + (r.lastError ? '; last error: ' + r.lastError : '') +
+            (st.lastCrash ? '. Service error caught: ' + st.lastCrash : '');
         } else {
           svcStatus = 'not available (restart the TV to load the new service)';
         }
@@ -386,6 +473,7 @@
     // In ambient mode, the first press only brings the dock back.
     if (ambient) { setAmbient(false); e.preventDefault(); return; }
     if (pickerOpen) { pickerKey(k); e.preventDefault(); return; }
+    if (agendaOpen) { agendaKey(k); e.preventDefault(); return; }
     if (csOpen) {
       if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) closeCalSetup(true);
       e.preventDefault();
@@ -408,7 +496,7 @@
     else if (k === KEY.ENTER) {
       if (diagOpen) return;
       if (area === 'weather') openPicker();
-      else if (area === 'cal') openCalSetup();
+      else if (area === 'cal') { if (calCfg) openAgenda(); else openCalSetup(); }
       else launch(APPS[focus]);
     }
     else if ((k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) && area !== 'dock') setArea('dock');
@@ -481,7 +569,7 @@
     $('label').textContent = a === 'weather'
       ? (wxLoc ? 'Weather for ' + wxLoc.name + '. Press OK to change' : 'Press OK to set your ZIP code')
       : a === 'cal'
-        ? (calCfg ? 'Calendars. Press OK to change them' : 'Press OK to add calendars')
+        ? (calCfg ? 'Calendar. Press OK to see every event' : 'Press OK to add calendars')
         : APPS[focus].name;
   }
 
@@ -679,7 +767,7 @@
   var CAL_REFRESH_MS = 15 * 60 * 1000;
   var CAL_RETRY_MS = 5 * 60 * 1000;
   var CAL_DAYS = 7;               // look this many days ahead
-  var CAL_MAX_ROWS = 7;           // day headings + events shown
+  var CAL_MAX_ROWS = 9;           // lines in the panel (day headings + events); OK shows the full agenda
   var CAL_COLORS = ['#5AC8FA', '#34C759', '#FF9F0A'];
 
   var calCfg = null;              // { cals: [{ name, url }], timesOnly }
@@ -710,6 +798,39 @@
     return x;
   }
 
+  // Upcoming events as display rows: { day: 'Today' } headings and { it, when } events.
+  function calRows() {
+    var now = Date.now();
+    var today = startOfDay(now);
+    var items = (calLast && calLast.items) || [];
+    var rows = [];
+    var lastDay = null;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (it.e <= now && !(it.e === it.s && it.s > now - 60000)) continue;
+      var day = Math.max(startOfDay(it.s), today);
+      if (day !== lastDay) {
+        rows.push({ day: dayLabel(day, today), first: lastDay === null, today: day === today });
+        lastDay = day;
+      }
+      var when = it.a ? 'All day' : (it.s <= now && it.e > now) ? 'Now' : (it.s < day ? 'Ongoing' : fmtTime(it.s));
+      rows.push({ it: it, when: when, today: day === today });
+    }
+    return rows;
+  }
+
+  function rowEl(r) {
+    if (r.day) return el('div', 'day' + (r.first ? ' first' : ''), r.day);
+    var row = el('div', 'ev');
+    var dot = el('span', 'dot');
+    dot.style.backgroundColor = CAL_COLORS[r.it.c % CAL_COLORS.length];
+    row.appendChild(dot);
+    row.appendChild(el('span', 'when', r.when));
+    var cal = calCfg.cals[r.it.c];
+    row.appendChild(document.createTextNode(calCfg.timesOnly ? (cal ? cal.name : 'Busy') : r.it.title));
+    return row;
+  }
+
   function renderCal() {
     var box = $('calList');
     if (!box) return;
@@ -719,39 +840,58 @@
       box.appendChild(el('div', 'note', 'Select with ↑ and press OK to add calendars'));
       return;
     }
-    var now = Date.now();
-    var today = startOfDay(now);
-    var items = (calLast && calLast.items) || [];
-    var rows = 0;
-    var lastDay = null;
-    for (var i = 0; i < items.length && rows < CAL_MAX_ROWS; i++) {
-      var it = items[i];
-      if (it.e <= now && !(it.e === it.s && it.s > now - 60000)) continue;
-      var day = Math.max(startOfDay(it.s), today);
-      if (day !== lastDay) {
-        if (rows >= CAL_MAX_ROWS - 1) break;   // don't end on a lone heading
-        box.appendChild(el('div', 'day' + (lastDay === null ? ' first' : ''), dayLabel(day, today)));
-        lastDay = day;
-        rows++;
-      }
-      var row = el('div', 'ev');
-      var dot = el('span', 'dot');
-      dot.style.backgroundColor = CAL_COLORS[it.c % CAL_COLORS.length];
-      row.appendChild(dot);
-      var when = it.a ? 'All day' : (it.s <= now && it.e > now) ? 'Now' : (it.s < day ? 'Ongoing' : fmtTime(it.s));
-      row.appendChild(el('span', 'when', when));
-      var cal = calCfg.cals[it.c];
-      row.appendChild(document.createTextNode(calCfg.timesOnly ? (cal ? cal.name : 'Busy') : it.title));
-      box.appendChild(row);
-      rows++;
+    var rows = calRows();
+    var stale = calLast && Date.now() - calLast.t > 60 * 60 * 1000;
+    var room = CAL_MAX_ROWS - (stale ? 1 : 0);
+    var shown = rows.length > room ? room - 1 : rows.length;     // keep a line for "+N more"
+    if (shown > 0 && rows[shown - 1].day) shown--;               // don't end on a lone heading
+    for (var i = 0; i < shown; i++) box.appendChild(rowEl(rows[i]));
+    if (shown < rows.length) {
+      var moreToday = 0, moreLater = 0;
+      for (var j = shown; j < rows.length; j++) if (!rows[j].day) { if (rows[j].today) moreToday++; else moreLater++; }
+      box.appendChild(el('div', 'note', (moreToday ? '+' + moreToday + ' more today' : '+' + moreLater + ' more this week') +
+        ' · select and press OK to see all'));
     }
-    if (!rows) {
+    if (!rows.length) {
       box.appendChild(el('div', 'day first', 'Calendar'));
       box.appendChild(el('div', 'note', calLast ? 'Nothing in the next ' + CAL_DAYS + ' days' : 'Loading…'));
     }
-    if (calLast && now - calLast.t > 60 * 60 * 1000) {
-      box.appendChild(el('div', 'note', 'Last updated ' + fmtTime(calLast.t)));
+    if (stale) box.appendChild(el('div', 'note', 'Last updated ' + fmtTime(calLast.t)));
+    if (agendaOpen) renderAgenda();
+  }
+
+  // Full agenda overlay: every upcoming event, scroll with ↑ ↓.
+  var agendaOpen = false;
+  var agendaTop = 0;
+  var AGENDA_ROWS = 15;
+
+  function renderAgenda() {
+    var rows = calRows();
+    agendaTop = Math.max(0, Math.min(agendaTop, rows.length - AGENDA_ROWS));
+    var box = $('agList');
+    box.innerHTML = '';
+    if (!rows.length) box.appendChild(el('div', 'note', 'Nothing in the next ' + CAL_DAYS + ' days'));
+    var last = Math.min(rows.length, agendaTop + AGENDA_ROWS);
+    if (last < rows.length && rows[last - 1].day) last--;          // don't end on a lone heading
+    for (var i = agendaTop; i < last; i++) {
+      var r = rows[i];
+      if (r.day && i === agendaTop) r = { day: r.day, first: true };
+      box.appendChild(rowEl(r));
     }
+    var below = 0;
+    for (var b = last; b < rows.length; b++) if (!rows[b].day) below++;
+    $('agHint').textContent = (agendaTop > 0 ? '↑ more above · ' : '') + (below > 0 ? '↓ ' + below + ' more below · ' : '') +
+      'OK to change calendars · Back to close';
+  }
+
+  function openAgenda() { agendaOpen = true; agendaTop = 0; $('agenda').className = ''; renderAgenda(); }
+  function closeAgenda() { agendaOpen = false; $('agenda').className = 'hidden'; }
+
+  function agendaKey(k) {
+    if (k === KEY.UP) { agendaTop = Math.max(0, agendaTop - 3); renderAgenda(); }
+    else if (k === KEY.DOWN) { agendaTop += 3; renderAgenda(); }
+    else if (k === KEY.ENTER) { closeAgenda(); openCalSetup(); }
+    else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) closeAgenda();
   }
 
   function fetchOne(link, cb) {
