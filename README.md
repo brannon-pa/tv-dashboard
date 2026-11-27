@@ -128,8 +128,8 @@ You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
 
 TizenBrew loads the **latest git tag** of this repo, not the latest commit.
 
-1. Commit your change and bump `version` in `package.json`. Also update the `?v=` numbers on the
-   file links in `index.html`, so the TV doesn't keep an old copy of a file.
+1. Commit your change and bump `version` in `package.json`. Don't add `?v=` or other query
+   strings to the file links in `index.html`: TizenBrew then fails to load those files.
    To test the weather backup in a browser, open `index.html?wx=nws`.
 2. Tag and push it:
    ```bash
