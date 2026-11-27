@@ -34,6 +34,16 @@
   ];
   var WALL_INTERVAL_MS = 5 * 60 * 1000;
 
+  // The TV's own app icons are old and low-res, so tiles show clean name labels.
+  // Set to true to use the TV's icons instead (scaled to fit, never stretched).
+  var USE_TV_ICONS = false;
+
+  // Always-on behaviour.
+  var IDLE_MS = 3 * 60 * 1000; // no button presses for this long -> ambient mode (dock hides)
+  var NIGHT_START = 23;        // dim the screen from 11 PM ...
+  var NIGHT_END = 6;           // ... until 6 AM
+  var RELOAD_HOUR = 4;         // reload once a day at 4 AM so a page left on for days stays fresh
+
   var KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, ENTER: 13, BACK: 10009, ESC: 27, BACKSPACE: 8, RED: 403, GREEN: 404 };
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -93,7 +103,47 @@
     $('hm').textContent = (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m;
     $('ampm').textContent = h < 12 ? 'AM' : 'PM';
     $('date').textContent = DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+
+    // Night dimming.
+    var night = NIGHT_START > NIGHT_END ? (h >= NIGHT_START || h < NIGHT_END) : (h >= NIGHT_START && h < NIGHT_END);
+    document.body.classList.toggle('night', night);
+
+    // In ambient mode, drift the clock a little every few minutes.
+    if (ambient && m % 3 === 0) drift();
+
+    // Daily refresh (only if the page has been up for over an hour).
+    if (h === RELOAD_HOUR && m === 0 && Date.now() - startedAt > 3600000) {
+      window.location.reload();
+      return;
+    }
+
     setTimeout(tick, 60000 - d.getSeconds() * 1000 - d.getMilliseconds() + 50);
+  }
+
+  // ---------- Ambient mode (dock hides after IDLE_MS; any button wakes it) ----------
+
+  var ambient = false;
+  var idleTimer = null;
+  var startedAt = Date.now();
+
+  function drift() {
+    var dx = Math.round(Math.random() * 80 - 40);
+    var dy = Math.round(Math.random() * 60 - 20);
+    var tf = ambient ? 'translate(' + dx + 'px,' + dy + 'px)' : '';
+    var st = $('clockbox').style;
+    st.webkitTransform = tf;
+    st.transform = tf;
+  }
+
+  function setAmbient(on) {
+    ambient = on;
+    document.body.classList.toggle('ambient', on);
+    drift();
+  }
+
+  function poke() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { setAmbient(true); }, IDLE_MS);
   }
 
   // ---------- Wallpapers (two layers, crossfade, preload only the next one) ----------
@@ -176,7 +226,7 @@
         }
       }
       if (a.found) {
-        if (a.found.hasIcon) addIcon(tiles[i], a.found.id);
+        if (USE_TV_ICONS && a.found.hasIcon) addIcon(tiles[i], a.found.id);
       } else {
         tiles[i].className += ' missing';
       }
@@ -185,6 +235,7 @@
 
   function addIcon(tile, id) {
     var img = new Image();
+    img.className = 'icon';
     img.onload = function () { tile.appendChild(img); };
     img.src = SERVICE + '/icon?id=' + encodeURIComponent(id);
   }
@@ -248,6 +299,9 @@
 
   function onKey(e) {
     var k = e.keyCode;
+    poke();
+    // In ambient mode, the first press only brings the dock back.
+    if (ambient) { setAmbient(false); e.preventDefault(); return; }
     if (k === KEY.LEFT) setFocus(focus - 1);
     else if (k === KEY.RIGHT) setFocus(focus + 1);
     else if (k === KEY.ENTER) { if (!diagOpen) launch(APPS[focus]); }
@@ -280,6 +334,7 @@
     var f = parseInt(store('dash.focus'), 10);
     setFocus(f >= 0 && f < APPS.length ? f : 0);
     document.addEventListener('keydown', onKey);
+    poke();
 
     var w = parseInt(store('dash.wall'), 10);
     if (WALLPAPERS.length) {

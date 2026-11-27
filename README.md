@@ -36,6 +36,28 @@ Nothing is changed on the TV's system. Only two things are added:
 
 Wallpapers change every 5 minutes. The dashboard remembers the last selected app.
 
+## Always-on behaviour
+
+- **Ambient mode:** after 3 minutes with no button presses, the dock fades away, leaving
+  just the clock and wallpaper. The clock drifts slightly every few minutes. Any button
+  brings the dock back; that first press only wakes it.
+- **Night dimming:** the screen dims from 11 PM to 6 AM.
+- **Daily refresh:** the page reloads itself at 4 AM, so it stays fresh when left on for days.
+
+You can change these in the settings block at the top of `app.js` (`IDLE_MS`,
+`NIGHT_START`, `NIGHT_END`, `RELOAD_HOUR`, `USE_TV_ICONS`).
+
+### Opening the dashboard automatically
+
+- In **TizenBrew**, open **Settings** → **Autolaunch Settings**, select **Dashboard** and confirm.
+  TizenBrew will then open the dashboard as soon as it starts.
+  To skip auto-launch once, hold **Up** while TizenBrew is opening.
+- On the TV, go to **Settings → General → Smart Features** and set **Autorun Last App** to **On**,
+  so the TV reopens TizenBrew (and therefore the dashboard) when it turns on.
+- To stop the TV switching itself off while the dashboard is showing, turn off
+  **Auto Power Off** and **No Signal Power Off** (Settings → General → Eco Solution), and turn off
+  or lengthen **Auto Protection Time** (Settings → General → System Manager).
+
 ## Customising
 
 - **Apps:** edit the `APPS` list at the top of `app.js`. Each entry has a display
