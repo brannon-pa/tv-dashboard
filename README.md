@@ -6,7 +6,7 @@ your upcoming calendar events, rotating nature wallpapers and a dock of streamin
 launch with the remote.
 
 Built for a 2018 Samsung (Tizen 4.0), so it uses plain HTML, CSS and ES5 JavaScript:
-no frameworks, no build step, about 70 KB of code plus about 1.9 MB of wallpapers.
+no frameworks, no build step, about 80 KB of code plus about 3.5 MB of wallpapers.
 
 ## What gets installed
 
@@ -24,7 +24,7 @@ Nothing is changed on the TV's system. Only two things are added:
 | `index.html`, `style.css`, `app.js` | The dashboard itself. |
 | `ical.js` | Reads calendar (.ics) files, including repeating events. |
 | `service.js` | A small service that runs inside TizenBrew on `127.0.0.1:8093` (TV-only, not reachable from your network). It lists and launches installed apps and downloads your calendars, because the dashboard page can't do either itself. During calendar setup only, it also shows a form on port 8094 of the TV's Wi-Fi address. |
-| `wallpapers/` | Eight 1920×1080 JPEGs, each 250 KB or less except `02` (about 370 KB) and `06` (about 290 KB). |
+| `wallpapers/` | Fourteen 1920×1080 JPEGs (eight landscapes, six Hawaii), each 300 KB or less except `02` (about 370 KB). |
 
 ## Remote controls
 
@@ -41,6 +41,14 @@ Wallpapers change every 5 minutes and follow the time of day: bright photos from
 darker ones in the evening and at night. Each wallpaper's `when` tag in `app.js` (`day`, `night`
 or `any`) controls this. The dashboard remembers the last selected app.
 
+**Gloomy-weather escape:** while it's raining, snowing, stormy, foggy or overcast where you are, the
+rotation switches to the six Hawaii photos (sunny beaches by day, sunsets in the evening), and back to
+the regular landscapes when the sky clears. Wallpapers marked `hawaii: true` in `app.js` form that set;
+set `GLOOMY_HAWAII` to `false` to rotate everything regardless of weather. Diagnostics show which set is
+in use.
+
+The calendar sits on frosted glass: a blurred copy of the wallpaper behind it, with no border.
+
 ## Weather
 
 The top-right corner shows the current temperature, conditions and today's high and low,
@@ -51,7 +59,8 @@ After a failure it retries every 5 minutes.
 
 **Weather effects:** when it's raining, snowing, stormy or foggy where you are, a light animation
 plays over the wallpaper: drizzle, rain, heavy rain, rain with lightning flashes, falling snow or
-drifting fog. Clear and cloudy weather show none. The effects only slide pre-drawn layers, which the
+drifting fog. Clear and cloudy weather show none. Rain is drawn in three depths (fine, slow streaks far away; a few long, soft ones up close) and
+the scene darkens slightly while it rains. The effects only slide pre-drawn layers, which the
 TV's graphics chip handles, so they stay smooth on older TVs. To see them all on the TV, open
 diagnostics (**↓** on the dock) and press **OK**: each effect plays for 5 seconds with a label. To turn them off, set
 `WX_EFFECTS = false` in `app.js`. To preview one in a browser, open `index.html?fx=snow` (or
@@ -233,6 +242,12 @@ credit is appreciated, not required. Each image was resized to 1920×1080 and re
 | `06-coast-knysna.jpg` | [The Heads, Knysna, South Africa](https://unsplash.com/photos/rfm-8YBZ3ks) | De wet Cilliers (@heydewet) |
 | `07-desert-atacama-dunes.jpg` | [Dunes in the Atacama, Chile](https://unsplash.com/photos/RX2e0bMD73M) | Marek Piwnicki (@marekpiwnicki) |
 | `08-aurora-lofoten.jpg` | [Aurora over Lofoten, Norway](https://unsplash.com/photos/1UZ5fAF2xLI) | Matthieu Gouiffes (@matthieu_gouiffes) |
+| `09-hawaii-na-pali-kauai.jpg` | [Na Pali Coast, Kauai](https://unsplash.com/photos/prSogOoFmkw) | Braden Jarvis (@jarvisphoto) |
+| `10-hawaii-kauai-reef.jpg` | [Green coastline and reef, Kauai](https://unsplash.com/photos/fd1cQ3mmBTE) | Karsten Winegeart (@_karsten) |
+| `11-hawaii-hanauma-bay.jpg` | [Hanauma Bay, Oahu](https://unsplash.com/photos/Qy1xhdvuxfs) | Emily Moynihan (@ejmmoynihan) |
+| `12-hawaii-north-shore-oahu.jpg` | [North Shore at golden hour, Oahu](https://unsplash.com/photos/KMn4VEeEPR8) | Sean Oulashin (@oulashin) |
+| `13-hawaii-maui-sunset.jpg` | [Secret Cove Beach at sunset, Maui](https://unsplash.com/photos/7782WXBriyM) | Ganapathy Kumar (@gkumar2175) |
+| `14-hawaii-oahu-palms.jpg` | [Palm silhouettes at sunset, Oahu](https://unsplash.com/photos/UmciMDWtocw) | Kvnga (@kvnga) |
 
 App names are trademarks of their owners. This project ships no app logos; on the TV,
 tiles use the icons of the apps installed on that TV.

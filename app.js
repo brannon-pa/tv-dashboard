@@ -31,8 +31,18 @@
     { file: '05-coast-torrey-pines.jpg',   when: 'day',   credit: 'Lance Anderson / Unsplash' },
     { file: '06-coast-knysna.jpg',         when: 'day',   credit: 'De wet Cilliers / Unsplash' },
     { file: '07-desert-atacama-dunes.jpg', when: 'day',   credit: 'Marek Piwnicki / Unsplash' },
-    { file: '08-aurora-lofoten.jpg',       when: 'night', credit: 'Matthieu Gouiffes / Unsplash' }
+    { file: '08-aurora-lofoten.jpg',       when: 'night', credit: 'Matthieu Gouiffes / Unsplash' },
+    // Hawaii set: shown instead of the others while the weather is gloomy (see GLOOMY_HAWAII).
+    { file: '09-hawaii-na-pali-kauai.jpg',    when: 'day',   hawaii: true, credit: 'Braden Jarvis / Unsplash' },
+    { file: '10-hawaii-kauai-reef.jpg',       when: 'day',   hawaii: true, credit: 'Karsten Winegeart / Unsplash' },
+    { file: '11-hawaii-hanauma-bay.jpg',      when: 'day',   hawaii: true, credit: 'Emily Moynihan / Unsplash' },
+    { file: '12-hawaii-north-shore-oahu.jpg', when: 'any',   hawaii: true, credit: 'Sean Oulashin / Unsplash' },
+    { file: '13-hawaii-maui-sunset.jpg',      when: 'night', hawaii: true, credit: 'Ganapathy Kumar / Unsplash' },
+    { file: '14-hawaii-oahu-palms.jpg',       when: 'night', hawaii: true, credit: 'Kvnga / Unsplash' }
   ];
+  // When it's rainy, snowy, foggy, stormy or overcast, rotate only the Hawaii photos;
+  // otherwise only the regular ones. Set to false to mix everything regardless of weather.
+  var GLOOMY_HAWAII = true;
   var DAY_START = 7;   // 'day' wallpapers from 7 AM ...
   var DAY_END = 18;    // ... until 6 PM
   var WALL_INTERVAL_MS = 5 * 60 * 1000;
@@ -302,6 +312,9 @@
     img.onload = function () {
       var back = wallFront === 'wallA' ? 'wallB' : 'wallA';
       $(back).style.backgroundImage = 'url("' + img.src + '")';
+      var glassSrc = img.src;
+      setTimeout(function () { var g = $('calGlass'); if (g) g.style.backgroundImage = 'url("' + glassSrc + '")'; },
+        firstWall ? 0 : 800);
       // First wallpaper appears instantly; later ones crossfade.
       $(back).className = firstWall ? 'wall on instant' : 'wall on';
       firstWall = false;
@@ -320,7 +333,9 @@
   }
 
   function wallFits(i) {
-    var when = WALLPAPERS[i].when || 'any';
+    var wp = WALLPAPERS[i];
+    var when = wp.when || 'any';
+    if (GLOOMY_HAWAII && !!wp.hawaii !== wxGloomy) return false;
     return when === 'any' || when === (isDaytime() ? 'day' : 'night');
   }
 
@@ -423,7 +438,8 @@
     } catch (e) { tzTest = 'not supported (' + e.message + ')'; }
     var w = loadJSON('dash.wx.last');
     lines.unshift('', 'Weather now: ' + (w ? (w.text || WX_TEXT[w.code] || '?') + (w.code !== undefined && w.code !== null ? ' (code ' + w.code + ')' : '') : 'none') +
-      '. Effect: ' + (fxNow || 'none') + '. Press OK to test all effects.');
+      '. Effect: ' + (fxNow || 'none') + '. Wallpapers: ' + (wxGloomy && GLOOMY_HAWAII ? 'Hawaii (gloomy weather)' : 'regular') +
+      '. Press OK to test all effects.');
     lines.push('  TV time: ' + new Date().toString());
     lines.push('  New York time via Intl: ' + tzTest);
     if (!calCfg || !calCfg.cals.length) lines.push('  none set up');
@@ -597,6 +613,14 @@
     return '';
   }
 
+  // Gray skies: any effect, or overcast.
+  function wxIsGloomy(w) {
+    if (wxKind(w)) return true;
+    if (w.code !== undefined && w.code !== null) return w.code === 3;
+    return /overcast|^cloudy|mostly cloudy/.test(String(w.text || '').toLowerCase());
+  }
+
+  var wxGloomy = false;     // true -> Hawaii wallpapers
   var fxNow = '';          // effect chosen from the weather
   var fxDemoTimer = null;
 
@@ -663,6 +687,11 @@
   function renderWeather(w) {
     var fresh = w && (Date.now() - w.t) < WX_MAX_AGE_MS;
     setEffect(wxLoc && fresh ? wxKind(w) : '');
+    var gloomy = FORCE_FX ? FORCE_FX !== 'none' : !!(wxLoc && fresh && wxIsGloomy(w));
+    if (gloomy !== wxGloomy) {
+      wxGloomy = gloomy;
+      if (wallIdx >= 0 && !wallFits(wallIdx)) nextWall();
+    }
     if (!wxLoc) {
       $('wxTemp').textContent = '';
       $('wxDesc').textContent = 'Weather';
